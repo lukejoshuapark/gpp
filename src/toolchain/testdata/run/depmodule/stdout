@@ -1,0 +1,3 @@
+Circle(2) 12 <nil>
+radius 2
+parsing radius: strconv.ParseFloat: parsing "x": invalid syntax

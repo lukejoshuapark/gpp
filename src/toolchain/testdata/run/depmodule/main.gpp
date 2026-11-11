@@ -1,0 +1,17 @@
+package main
+
+import (
+	"fmt"
+
+	"example.com/lib/shapes"
+)
+
+func main() {
+	s, err := shapes.Parse("2")
+	fmt.Println(s, s.Area(), err)
+	if s is shapes.Shape.Circle(r) {
+		fmt.Println("radius", r)
+	}
+	_, err = shapes.Parse("x")
+	fmt.Println(err)
+}

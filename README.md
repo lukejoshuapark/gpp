@@ -38,14 +38,24 @@ gpp test ./...             # tests in _test.gpp (and _test.go) files
 gpp install, gpp vet       # likewise
 gpp check ./...            # type-check only, and report errors
 gpp fmt [-l] [paths]       # format .gpp files (gofmt style); "gpp fmt -" for stdin
-gpp gen [packages]         # write the Go translation next to each .gpp file (x.gpp.go)
+gpp gen [packages]         # write the Go translation next to each .gpp file, to inspect it
 gpp lsp                    # language server, on stdin/stdout
 gpp mod init example.com/m # anything else is passed to go
 ```
 
 Projects are plain Go modules (`go.mod`, `go.sum`, `gpp get`, `gpp mod tidy`).
-Dependencies may contain `.gpp` files too: gpp translates them as well.
-To publish a G++ package for plain Go users, commit the output of `gpp gen`.
+G++ code can import any Go module, and any G++ module: a module published
+from Git and fetched with `gpp get`, like any Go module. Go code cannot
+import G++ packages.
+
+Use `gpp mod tidy` rather than `go mod tidy`, which can't see the imports of
+`.gpp` files and would drop the requirements they need.
+
+How G++ dependencies build: the go command refuses overlays inside the
+module cache, so gpp copies each G++ module version it needs, once, into its
+own cache. It then runs the go command with a temporary module file
+(`-modfile`) that replaces the module with that copy. Your `go.mod` is never
+changed, but `go version -m` on the binary shows the replacement.
 
 ## How it works
 
@@ -140,6 +150,8 @@ feature in `features.md`.
   in the `.go` files. `gpp check` and the build are unaffected.
 - `.gpp` files cannot use cgo (`import "C"`). Go files in the same package
   can.
+- Vendoring (`go mod vendor`) and Go workspaces (`go.work`) are not
+  supported with G++ dependencies.
 - `?` cannot be used in `switch` case expressions or in a `for` loop's post
   statement.
 - A lambda or ternary whose type mentions an unexported type from another

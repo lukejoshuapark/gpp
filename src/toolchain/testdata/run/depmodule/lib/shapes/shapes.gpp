@@ -1,0 +1,13 @@
+// Package shapes is in another module and has only .gpp files.
+package shapes
+
+import "strconv"
+
+type Shape enum {
+	Empty
+	Circle(float64)
+}
+
+func Parse(s string) (Shape, error) => Shape.Circle(strconv.ParseFloat(s, 64)? "parsing radius"), nil
+
+func (s Shape) Area() float64 => s is Shape.Circle(r) ? 3 * r * r : 0

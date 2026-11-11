@@ -56,6 +56,12 @@ func main() {
 		err = fmtCmd(args)
 	case "gen":
 		err = gen(args)
+	case "mod":
+		if len(args) > 0 && args[0] == "tidy" {
+			err = driver.Tidy("", args[1:])
+		} else {
+			passthrough(cmd, args)
+		}
 	case "lsp":
 		err = lsp.Serve(os.Stdin, os.Stdout)
 	case "version":
@@ -207,6 +213,15 @@ func goWithOverlay(cmd string, args []string) error {
 		return exitCode(1)
 	}
 	goArgs := []string{cmd}
+	if prog.ModFile != "" {
+		// G++ modules from the module cache are replaced by copies
+		for _, f := range flags {
+			if f == "-modfile" || strings.HasPrefix(f, "-modfile=") {
+				return fmt.Errorf("gpp %s does not support -modfile with G++ dependencies", cmd)
+			}
+		}
+		goArgs = append(goArgs, "-modfile="+prog.ModFile)
+	}
 	if len(lowered) > 0 {
 		ov, err := driver.WriteOverlay(lowered)
 		if err != nil {
