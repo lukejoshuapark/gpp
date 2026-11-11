@@ -52,6 +52,10 @@ func (check *Checker) isTerminating(s ast.Stmt, label string) bool {
 		}
 
 	case *ast.SwitchStmt:
+		if check.exhaustive[s] {
+			// G++: an exhaustive switch on an enum
+			return check.isTerminatingEnumSwitch(s.Body, label)
+		}
 		return check.isTerminatingSwitch(s.Body, label)
 
 	case *ast.TypeSwitchStmt:

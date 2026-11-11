@@ -94,3 +94,65 @@ func greet(name string) => fmt.Println("hello,", name)
 - For several results, list the values: `=> v, nil`.
 - A function without results takes a single expression (normally a call),
   which runs as a statement.
+
+## Enums
+
+Enums list a fixed set of variants. Each variant can carry one value:
+
+```go
+type Color enum { Red; Green; Blue }
+
+type Shape enum {
+	Empty
+	Circle(float64)
+	Rect(Size)            // several values: use a struct
+}
+
+type Option[T any] enum {
+	None
+	Some(T)
+}
+```
+
+- **Construction:** `Color.Red`, `Shape.Circle(2)`, `Option.Some(3)`. A generic
+  enum's type argument is inferred from the value; for a variant without a
+  value, write it out: `Option[int].None`. The type name is always required.
+- **`switch` on an enum value:** its cases are patterns that can bind the
+  value. Without a `default` case the switch must cover every variant, and
+  then it counts as a terminating statement:
+
+  ```go
+  func (s Shape) Area() float64 {
+  	switch s {
+  	case Shape.Circle(r):
+  		return math.Pi * r * r
+  	case Shape.Rect(size):
+  		return size.W * size.H
+  	case Shape.Empty:
+  		return 0
+  	}
+  }
+  ```
+
+  A case can list several patterns (`case Color.Red, Color.Blue:`), but then
+  it can't bind values. `_` ignores a value, and `Shape.Circle` without
+  parentheses matches any circle.
+- **`is`:** tests for a variant. In the `&&` chain of an `if` or ternary
+  condition it can bind the value, which is then in scope for the rest of
+  the condition and the `if` body (or the ternary's first branch):
+
+  ```go
+  if s is Shape.Circle(r) && r > 5 { ... }
+  label := s is Shape.Circle(r) ? fmt.Sprint(r) : "-"
+  empty := s is Shape.Empty
+  ```
+
+- **Values:** enums are plain values, with no allocation. The zero value is the
+  first variant, so put a sensible default first. Enums support `==` (and can
+  be map keys) when their values do. They print as `Circle(2)` through a
+  generated `String` method, unless you declare your own.
+- **Ordinary named types:** enums can have methods (other than ones named like
+  variants) and satisfy interfaces. `type Hue Color` makes a new enum type with
+  the same variants.
+- **Code outside the enum:** composite literals of an enum type are not
+  allowed, and neither is reading its fields, which are internal.

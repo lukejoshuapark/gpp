@@ -349,3 +349,67 @@ func TestImportQuickFix(t *testing.T) {
 		t.Errorf("edit %q", e.NewText)
 	}
 }
+
+const enumSrc = `package main
+
+// Shape is a shape.
+type Shape enum {
+	Empty
+	// Circle has a radius.
+	Circle(float64)
+}
+
+func main() {
+	s := Shape.Circle(2)
+	if s is Shape.Circle(r) && r > 1 {
+		println(r)
+	}
+}
+`
+
+func TestEnums(t *testing.T) {
+	dir := workspace(t, map[string]string{"main.gpp": enumSrc})
+	c := startServer(t)
+	uri := c.open(filepath.Join(dir, "main.gpp"), enumSrc)
+	if d := c.waitDiagnostics(uri); len(d) != 0 {
+		t.Fatalf("unexpected diagnostics: %+v", d)
+	}
+	hover := func(marker string, offset int) string {
+		var h Hover
+		c.call("textDocument/hover", TextDocumentPositionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: at(t, enumSrc, marker, offset)}, &h)
+		return h.Contents.Value
+	}
+	if h := hover("Shape.Circle(2)", 7); !strings.Contains(h, "variant Shape.Circle(float64)") || !strings.Contains(h, "has a radius") {
+		t.Errorf("variant hover: %q", h)
+	}
+	if h := hover("Shape.Circle(2)", 1); !strings.Contains(h, "type Shape enum {\n\tEmpty\n\tCircle(float64)\n}") || strings.Contains(h, "GPP_") {
+		t.Errorf("enum hover: %q", h)
+	}
+	if h := hover("r > 1", 0); !strings.Contains(h, "var r float64") {
+		t.Errorf("binding hover: %q", h)
+	}
+
+	src := strings.Replace(enumSrc, "s := Shape.Circle(2)", "s := Shape.Circle(2)\n\t_ = Shape.\n\t_ = s.", 1)
+	c.change(uri, 2, src)
+	var list CompletionList
+	c.call("textDocument/completion", CompletionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: at(t, src, "_ = Shape.", 10)}, &list)
+	got := completionLabels(list.Items)
+	if _, ok := got["Circle"]; !ok {
+		t.Errorf("variant completion: %v", got)
+	}
+	if _, ok := got["Empty"]; !ok {
+		t.Errorf("variant completion: %v", got)
+	}
+	c.call("textDocument/completion", CompletionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: at(t, src, "_ = s.", 6)}, &list)
+	got = completionLabels(list.Items)
+	if _, ok := got["String"]; !ok || len(got) != 1 {
+		t.Errorf("enum value completion: %v", got)
+	}
+
+	c.change(uri, 3, enumSrc)
+	var syms []DocumentSymbol
+	c.call("textDocument/documentSymbol", DocumentSymbolParams{TextDocument: TextDocumentIdentifier{URI: uri}}, &syms)
+	if len(syms) < 1 || syms[0].Kind != SymbolEnum || len(syms[0].Children) != 2 || syms[0].Children[1].Name != "Circle" {
+		t.Errorf("symbols: %+v", syms)
+	}
+}

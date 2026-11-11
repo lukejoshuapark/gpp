@@ -82,6 +82,27 @@
           }
         },
         {
+          "match": "\\b(type)\\s+([_\\p{L}][_\\p{L}\\p{N}]*)(\\[[^\\]]*\\])?\\s+(enum)\\b",
+          "captures": {
+            "1": {
+              "name": "storage.type.gpp"
+            },
+            "2": {
+              "name": "entity.name.type.enum.gpp"
+            },
+            "3": {
+              "patterns": [
+                {
+                  "include": "#expressions"
+                }
+              ]
+            },
+            "4": {
+              "name": "storage.type.enum.gpp"
+            }
+          }
+        },
+        {
           "match": "\\b(type)\\s+([_\\p{L}][_\\p{L}\\p{N}]*)",
           "captures": {
             "1": {
@@ -96,6 +117,9 @@
     },
     "expressions": {
       "patterns": [
+        {
+          "include": "#operators-is"
+        },
         {
           "include": "#comments"
         },
@@ -356,6 +380,14 @@
         {
           "match": "[_\\p{L}][_\\p{L}\\p{N}]*",
           "name": "variable.other.gpp"
+        }
+      ]
+    },
+    "operators-is": {
+      "patterns": [
+        {
+          "name": "keyword.operator.is.gpp",
+          "match": "(?<=[\\w)\\]]\\s)is(?=\\s+[_\\p{L}])"
         }
       ]
     }

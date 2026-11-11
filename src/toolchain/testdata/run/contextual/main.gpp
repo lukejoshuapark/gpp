@@ -1,0 +1,22 @@
+package main
+
+import "fmt"
+
+// enum and is are not keywords: valid Go using them as names stays valid.
+
+type enum int
+
+type is = bool
+
+type pair[is any] struct{ a, b is }
+
+func check(is is) is { return !is }
+
+func main() {
+	var e enum = 3
+	xs := []enum{1, 2}
+	is := check(false)
+	p := pair[enum]{1, 2}
+	enum := e + xs[1] + p.b
+	fmt.Println(enum, is)
+}

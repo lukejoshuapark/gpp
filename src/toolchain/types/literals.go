@@ -153,6 +153,13 @@ func (check *Checker) compositeLit(x *operand, e *ast.CompositeLit, hint Type) {
 		return
 	}
 
+	if EnumOf(base) != nil {
+		// G++
+		check.errorf(e, InvalidLit, "cannot write a composite literal of enum type %s: use a variant, as in %s.%s", base, typeName(base), EnumOf(base).variants[0].name)
+		x.invalidate()
+		return
+	}
+
 	switch u, _ := commonUnder(base, nil); utyp := u.(type) {
 	case *Struct:
 		if len(e.Elts) == 0 {

@@ -270,6 +270,7 @@ func (check *Checker) updateExprType(x ast.Expr, typ Type, final bool) {
 		*ast.FuncLit,
 		*ast.LambdaExpr,
 		*ast.TryExpr,
+		*ast.EnumType,
 		*ast.CompositeLit,
 		*ast.IndexExpr,
 		*ast.SliceExpr,
@@ -303,6 +304,10 @@ func (check *Checker) updateExprType(x ast.Expr, typ Type, final bool) {
 
 	case *ast.ParenExpr:
 		check.updateExprType(x.X, typ, final)
+
+	case *ast.IsExpr:
+		// G++: like a comparison, the result type is independent of the
+		// operand.
 
 	case *ast.TernaryExpr:
 		// G++: both branches have the type of the ternary.
@@ -1074,6 +1079,12 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 
 	case *ast.TernaryExpr:
 		check.ternary(T, x, e, hint)
+		if !x.isValid() {
+			goto Error
+		}
+
+	case *ast.IsExpr:
+		check.isExpr(x, e)
 		if !x.isValid() {
 			goto Error
 		}

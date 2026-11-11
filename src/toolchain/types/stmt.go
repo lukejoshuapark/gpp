@@ -607,12 +607,18 @@ func (check *Checker) stmt(ctxt stmtContext, s ast.Stmt) {
 		defer check.closeScope()
 
 		check.simpleStmt(s.Init)
+		// G++: names bound by "is" in the condition's && chain are in
+		// scope for the rest of the condition and the body only.
+		binds := check.openBindings(s.Cond, s.Cond, s.Body.End())
 		var x operand
 		check.expr(nil, &x, s.Cond)
 		if x.isValid() && !allBoolean(x.typ()) {
 			check.error(s.Cond, InvalidCond, "non-boolean condition in if statement")
 		}
 		check.stmt(inner, s.Body)
+		if binds {
+			check.closeScope()
+		}
 		// The parser produces a correct AST but if it was modified
 		// elsewhere the else branch may be invalid. Check again.
 		switch s.Else.(type) {
@@ -636,6 +642,10 @@ func (check *Checker) stmt(ctxt stmtContext, s ast.Stmt) {
 			// By checking assignment of x to an invisible temporary
 			// (as a compiler would), we get all the relevant checks.
 			check.assignment(&x, nil, "switch expression")
+			if x.isValid() && EnumOf(x.typ()) != nil {
+				check.enumSwitch(s, &x, inner) // G++
+				return
+			}
 			if x.isValid() && !Comparable(x.typ()) && !hasNil(x.typ()) {
 				check.errorf(&x, InvalidExprSwitch, "cannot switch on %s (%s is not comparable)", &x, x.typ())
 				x.invalidate()

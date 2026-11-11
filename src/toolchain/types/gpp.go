@@ -26,6 +26,9 @@ func (t *lambdaType) String() string   { return "lambda" }
 // Ternary: cond ? x : y
 
 func (check *Checker) ternary(T *target, x *operand, e *ast.TernaryExpr, hint Type) {
+	// Names bound by "is" in the condition are in scope in the condition
+	// and the true branch.
+	binds := check.openBindings(e.Cond, e, e.X.End())
 	var c operand
 	check.expr(nil, &c, e.Cond)
 	if c.isValid() && !allBoolean(c.typ()) {
@@ -34,6 +37,9 @@ func (check *Checker) ternary(T *target, x *operand, e *ast.TernaryExpr, hint Ty
 
 	var a, b operand
 	check.branch(T, &a, e.X, hint)
+	if binds {
+		check.closeScope()
+	}
 	check.branch(T, &b, e.Y, hint)
 	if !a.isValid() || !b.isValid() {
 		x.invalidate()

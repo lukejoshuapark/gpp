@@ -566,6 +566,20 @@ func writeObject(buf *bytes.Buffer, obj Object, qf Qualifier) {
 		buf.WriteString("nil")
 		return
 
+	case *Variant:
+		// G++: Shape.Circle(float64)
+		buf.WriteString("variant ")
+		if n := asNamed(obj.enumType()); n != nil {
+			buf.WriteString(packagePrefix(obj.Pkg(), qf) + n.obj.name + ".")
+		}
+		buf.WriteString(obj.Name())
+		if sig, ok := typ.(*Signature); ok {
+			buf.WriteByte('(')
+			WriteType(buf, sig.params.vars[0].typ, qf)
+			buf.WriteByte(')')
+		}
+		return
+
 	default:
 		panic(fmt.Sprintf("writeObject(%T)", obj))
 	}

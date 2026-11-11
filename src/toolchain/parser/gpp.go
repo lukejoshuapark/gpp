@@ -125,3 +125,81 @@ func (p *parser) parseArrowBody(results *ast.FieldList) *ast.BlockStmt {
 	}
 	return &ast.BlockStmt{Lbrace: arrow, List: []ast.Stmt{s}}
 }
+
+// peek returns the token after the current one.
+func (p *parser) peek() token.Token {
+	s := p.scanner.Clone()
+	for {
+		_, tok, _ := s.Scan()
+		if tok != token.COMMENT {
+			return tok
+		}
+	}
+}
+
+// parseTypeSpecType parses the type in a type declaration, which may be a
+// G++ enum: "enum" is only special here, directly followed by "{", where
+// Go would not accept it.
+func (p *parser) parseTypeSpecType() ast.Expr {
+	if p.tok == token.IDENT && p.lit == "enum" && p.peek() == token.LBRACE {
+		return p.parseEnumType()
+	}
+	return p.parseType()
+}
+
+// parseEnumType parses enum { Variant; Variant(Type); ... }.
+func (p *parser) parseEnumType() *ast.EnumType {
+	if p.trace {
+		defer un(trace(p, "EnumType"))
+	}
+	pos := p.pos
+	p.next() // enum
+	lbrace := p.expect(token.LBRACE)
+	var list []*ast.Field
+	for p.tok == token.IDENT {
+		doc := p.leadComment
+		name := p.parseIdent()
+		f := &ast.Field{Doc: doc, Names: []*ast.Ident{name}}
+		if p.tok == token.LPAREN {
+			p.next()
+			f.Type = p.parseType()
+			if p.tok == token.COMMA {
+				p.error(p.pos, "an enum variant carries at most one value: use a struct type for several")
+				for p.tok != token.RPAREN && p.tok != token.SEMICOLON && p.tok != token.RBRACE && p.tok != token.EOF {
+					p.next()
+				}
+			}
+			p.expect(token.RPAREN)
+		}
+		if p.tok == token.SEMICOLON || p.tok == token.RBRACE {
+			if p.tok == token.SEMICOLON {
+				p.next()
+			}
+			f.Comment = p.lineComment
+		} else {
+			p.errorExpected(p.pos, "';', newline or '}' after enum variant")
+			p.advance(exprEnd)
+		}
+		list = append(list, f)
+	}
+	rbrace := p.expect2(token.RBRACE)
+	if len(list) == 0 {
+		p.error(lbrace, "an enum needs at least one variant")
+	}
+	return &ast.EnumType{Enum: pos, Variants: &ast.FieldList{Opening: lbrace, List: list, Closing: rbrace}}
+}
+
+// atIs reports whether the current token is the G++ "is" operator: the
+// identifier "is" followed by an identifier (the pattern's type), which
+// can never follow an operand in Go.
+func (p *parser) atIs() bool {
+	return p.tok == token.IDENT && p.lit == "is" && p.peek() == token.IDENT
+}
+
+// parseIsExpr parses "is Pattern" after x.
+func (p *parser) parseIsExpr(x ast.Expr) ast.Expr {
+	pos := p.pos
+	p.next() // is
+	pattern := p.parsePrimaryExpr(nil)
+	return &ast.IsExpr{X: x, Is: pos, Pattern: pattern}
+}

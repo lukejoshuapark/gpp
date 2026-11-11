@@ -1,0 +1,142 @@
+package main
+
+import (
+	"fmt"
+	"strconv"
+
+	"example.com/test/geo"
+)
+
+type Color enum {
+	Red
+	Green
+	Blue
+}
+
+type Option[T any] enum {
+	None
+	Some(T)
+}
+
+func (o Option[T]) Or(def T) T {
+	switch o {
+	case Option.Some(v):
+		return v
+	default:
+		return def
+	}
+}
+
+// A linked list: recursion goes through a pointer.
+type List enum {
+	Nil
+	Cons(*Cell)
+}
+
+type Cell struct {
+	Head int
+	Tail List
+}
+
+func (l List) Sum() int => l is List.Cons(c) ? c.Head + c.Tail.Sum() : 0
+
+type Result enum {
+	Ok(int)
+	Err(error)
+}
+
+func parse(s string) Result {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return Result.Err(err)
+	}
+	return Result.Ok(n)
+}
+
+type Hue Color // a new type with Color's variants
+
+func find(xs []int, x int) Option[int] {
+	for i, v := range xs {
+		if v == x {
+			return Option.Some(i)
+		}
+	}
+	return Option[int].None
+}
+
+func main() {
+	// zero value is the first variant; == and map keys work
+	var c Color
+	fmt.Println(c, c == Color.Red, Color.Blue)
+	counts := map[Color]int{Color.Red: 1, Color.Blue: 2}
+	counts[Color.Blue]++
+	fmt.Println(counts[Color.Blue], len(counts))
+
+	// enums from another package, with methods and String
+	shapes := []geo.Shape{geo.Shape.Circle(1), geo.Shape.Rect(geo.Size{W: 2, H: 3}), geo.Shape.Empty}
+	for _, s := range shapes {
+		fmt.Println(s, s.Area())
+	}
+	fmt.Println(geo.Dir.North, geo.Dir.South)
+
+	// is, with and without bindings
+	s := shapes[0]
+	if s is geo.Shape.Circle(r) && r < 2 {
+		fmt.Println("small circle of radius", r)
+	} else if s is geo.Shape.Rect(_) {
+		fmt.Println("rect")
+	}
+	fmt.Println(shapes[2] is geo.Shape.Empty, shapes[1] is geo.Shape.Circle)
+
+	// a binding may reuse the name it tests
+	r := Option.Some(4)
+	if r is Option[int].Some(r) {
+		fmt.Println("r is", r)
+	}
+
+	// generic enums
+	fmt.Println(find([]int{5, 6, 7}, 6), find([]int{5}, 9))
+	fmt.Println(find([]int{5, 6, 7}, 7).Or(-1), find(nil, 1).Or(-1))
+	names := Option.Some("x")
+	fmt.Println(names == Option.Some("x"), names == Option[string].None)
+
+	// recursion through pointers
+	list := List.Cons(&Cell{1, List.Cons(&Cell{2, List.Cons(&Cell{3, List.Nil})})})
+	fmt.Println(list.Sum())
+
+	// switch with several patterns, break and labels
+	for _, in := range []string{"12", "x"} {
+	loop:
+		switch res := parse(in); res {
+		case Result.Ok(n):
+			if n > 10 {
+				fmt.Println("big", n)
+				break loop
+			}
+			fmt.Println("small", n)
+		case Result.Err(err):
+			fmt.Println("error:", err)
+		}
+	}
+	switch Color.Green {
+	case Color.Red, Color.Blue:
+		fmt.Println("red or blue")
+	case Color.Green:
+		fmt.Println("green")
+	}
+
+	// constructors are function values
+	mk := Result.Ok
+	fmt.Println(mk(7))
+
+	h := Hue.Green
+	fmt.Println(h is Hue.Green)
+
+	// enums in structs and composite literals
+	type pixel struct {
+		C    Color
+		Seen Option[bool]
+	}
+	px := []pixel{{Color.Blue, Option.Some(true)}, {}}
+	fmt.Printf("%v %+v\n", px[0], px[1])
+}

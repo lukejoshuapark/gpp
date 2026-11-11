@@ -134,6 +134,9 @@ func memberItemsOf(snap *snapshot, s *server, fi *fileInfo, t types.Type) []Comp
 		}
 		for i := range st.NumFields() {
 			f := st.Field(i)
+			if types.EnumOf(u) != nil {
+				break // an enum's fields are internal
+			}
 			if !seen[f.Name()] && visible(f) {
 				seen[f.Name()] = true
 				items = append(items, CompletionItem{
@@ -177,6 +180,16 @@ func memberItemsOf(snap *snapshot, s *server, fi *fileInfo, t types.Type) []Comp
 func methodExprItems(fi *fileInfo, t types.Type) []CompletionItem {
 	q := qualifier(fi.pkg.Types)
 	items := []CompletionItem{}
+	if en := types.EnumOf(t); en != nil {
+		for i := range en.Len() {
+			v := en.Variant(i)
+			item := CompletionItem{Label: v.Name(), Kind: CompletionEnumMember, SortText: fmt.Sprintf("0%03d", i)}
+			if vt := v.ValueType(t); vt != nil {
+				item.Detail = "(" + types.TypeString(vt, q) + ")"
+			}
+			items = append(items, item)
+		}
+	}
 	ms := types.NewMethodSet(t)
 	for i := range ms.Len() {
 		obj := ms.At(i).Obj()

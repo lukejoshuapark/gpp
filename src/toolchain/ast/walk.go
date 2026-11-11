@@ -81,6 +81,13 @@ func Walk(v Visitor, node Node) {
 	case *TryExpr:
 		Walk(v, n.X)
 
+	case *IsExpr:
+		Walk(v, n.X)
+		Walk(v, n.Pattern)
+
+	case *EnumType:
+		Walk(v, n.Variants)
+
 	case *LambdaExpr:
 		Walk(v, n.Params)
 		if n.Body != nil {

@@ -802,7 +802,11 @@ func (check *Checker) selector(x *operand, e *ast.SelectorExpr, wantType bool) {
 		}
 	}
 
-	check.exprOrType(x, e.X, false)
+	check.exprOrType(x, e.X, true) // G++: generic enum types allowed (Option.Some)
+	if check.enumSelector(x, e) {
+		return
+	}
+	check.nonGeneric(nil, x)
 	switch x.mode() {
 	case builtin:
 		// types2 uses the position of '.' for the error
@@ -838,6 +842,10 @@ func (check *Checker) selector(x *operand, e *ast.SelectorExpr, wantType bool) {
 		goto Error
 	}
 
+	if isReservedEnumField(x.typ(), sel) {
+		check.errorf(e.Sel, MissingFieldOrMethod, "%s is reserved: use switch or is to read an enum's value", sel)
+		goto Error
+	}
 	obj, index, indirect = lookupFieldOrMethod(x.typ(), x.mode() == variable, check.pkg, sel, false)
 	if obj == nil {
 		// Don't report another error if the underlying type was invalid (go.dev/issue/49541).

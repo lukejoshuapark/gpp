@@ -1,0 +1,19 @@
+Red true Blue
+3 2
+Circle(1) 3
+Rect({2 3}) 6
+Empty 0
+N S
+small circle of radius 1
+true false
+r is 4
+Some(1) None
+2 -1
+true false
+6
+big 12
+error: strconv.Atoi: parsing "x": invalid syntax
+green
+Ok(7)
+true
+{Blue Some(true)} {C:Red Seen:None}

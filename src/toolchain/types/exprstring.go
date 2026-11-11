@@ -45,6 +45,26 @@ func WriteExpr(buf *bytes.Buffer, x ast.Expr) {
 		WriteExpr(buf, x.X)
 		buf.WriteByte('?')
 
+	case *ast.IsExpr:
+		WriteExpr(buf, x.X)
+		buf.WriteString(" is ")
+		WriteExpr(buf, x.Pattern)
+
+	case *ast.EnumType:
+		buf.WriteString("enum{")
+		for i, f := range x.Variants.List {
+			if i > 0 {
+				buf.WriteString("; ")
+			}
+			buf.WriteString(f.Names[0].Name)
+			if f.Type != nil {
+				buf.WriteByte('(')
+				WriteExpr(buf, f.Type)
+				buf.WriteByte(')')
+			}
+		}
+		buf.WriteByte('}')
+
 	case *ast.LambdaExpr:
 		buf.WriteByte('(')
 		for i, f := range x.Params.List {

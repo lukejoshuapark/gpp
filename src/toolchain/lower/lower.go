@@ -58,6 +58,7 @@ func File(fset *token.FileSet, pkg *types.Package, info *types.Info, f *ast.File
 	for _, d := range f.Decls {
 		l.decl(d)
 	}
+	f.Decls = append(f.Decls, l.extra...)
 	l.addImports()
 	if len(l.errs) > 0 {
 		return nil, l.errs
@@ -89,6 +90,8 @@ type lowerer struct {
 	// wrapped records blocks lowering introduced around a statement, so
 	// labels move to the statement inside.
 	wrapped map[*ast.BlockStmt]bool
+	// extra holds declarations lowering adds (enum String methods).
+	extra []ast.Decl
 }
 
 func (l *lowerer) errorf(pos token.Pos, format string, args ...any) {
@@ -118,6 +121,13 @@ func (l *lowerer) decl(d ast.Decl) {
 		l.fn = saved
 	case *ast.GenDecl:
 		for _, spec := range d.Specs {
+			if ts, ok := spec.(*ast.TypeSpec); ok {
+				if et, ok := ts.Type.(*ast.EnumType); ok {
+					if m := l.enumDecl(ts, et); m != nil {
+						l.extra = append(l.extra, m)
+					}
+				}
+			}
 			if vs, ok := spec.(*ast.ValueSpec); ok {
 				var pre []ast.Stmt
 				vs.Values = l.spread(l.exprList(vs.Values, &pre))
@@ -209,6 +219,9 @@ func (l *lowerer) stmt(s ast.Stmt) []ast.Stmt {
 		return l.ifStmt(s)
 
 	case *ast.SwitchStmt:
+		if s.Tag != nil && types.EnumOf(l.info.Types[s.Tag].Type) != nil {
+			return l.enumSwitch(s)
+		}
 		var init []ast.Stmt
 		if s.Init != nil {
 			init = l.stmt(s.Init)
@@ -325,6 +338,7 @@ func (l *lowerer) callParts(call *ast.CallExpr, pre *[]ast.Stmt) {
 
 // ifStmt lowers an if statement, including else-if chains.
 func (l *lowerer) ifStmt(s *ast.IfStmt) []ast.Stmt {
+	binds := l.bindings(s.Cond, s.Body)
 	var init []ast.Stmt
 	if s.Init != nil {
 		init = l.stmt(s.Init)
@@ -342,7 +356,7 @@ func (l *lowerer) ifStmt(s *ast.IfStmt) []ast.Stmt {
 	case *ast.BlockStmt:
 		l.block(e)
 	}
-	return l.withInit(s, &s.Init, init, condPre)
+	return l.wrapBindings(binds, l.withInit(s, &s.Init, init, condPre))
 }
 
 // withInit reassembles a statement with an init statement (if, switch)
@@ -461,8 +475,14 @@ func (l *lowerer) expr(x ast.Expr, pre *[]ast.Stmt) ast.Expr {
 		return x
 
 	case *ast.SelectorExpr:
+		if v := l.variantOf(x); v != nil {
+			return l.variantValue(x, v)
+		}
 		x.X = l.expr(x.X, pre)
 		return x
+
+	case *ast.IsExpr:
+		return l.isExpr(x, pre)
 
 	case *ast.IndexExpr:
 		xs := l.exprList([]ast.Expr{x.X, x.Index}, pre)
@@ -484,6 +504,10 @@ func (l *lowerer) expr(x ast.Expr, pre *[]ast.Stmt) ast.Expr {
 		return x
 
 	case *ast.CallExpr:
+		if v := l.variantOf(x.Fun); v != nil {
+			// T.V(value)
+			return l.construct(l.info.Types[x].Type, v, l.expr(x.Args[0], pre), x.Pos())
+		}
 		xs := l.exprList(append([]ast.Expr{x.Fun}, x.Args...), pre)
 		x.Fun = xs[0]
 		x.Args = l.spread(xs[1:])
@@ -553,23 +577,41 @@ func (l *lowerer) ternary(x *ast.TernaryExpr, pre *[]ast.Stmt) ast.Expr {
 		return x
 	}
 	typ = types.Default(typ)
+	binds := l.bindings(x.Cond, x.X)
+	if len(binds) > 0 {
+		// The condition binds names: it is evaluated after their
+		// declarations, in the function literal or statements below.
+		var condPre []ast.Stmt
+		cond := l.expr(x.Cond, &condPre)
+		var aPre, bPre []ast.Stmt
+		a := l.expr(x.X, &aPre)
+		b := l.expr(x.Y, &bPre)
+		return l.ternaryStmts(x, typ, slices.Concat(binds, condPre), cond, a, b, aPre, bPre, pre)
+	}
 	cond := l.expr(x.Cond, pre)
 	var aPre, bPre []ast.Stmt
 	a := l.expr(x.X, &aPre)
 	b := l.expr(x.Y, &bPre)
-	pos := x.Pos()
+	return l.ternaryStmts(x, typ, nil, cond, a, b, aPre, bPre, pre)
+}
 
+// ternaryStmts finishes lowering a ternary expression. head holds
+// statements to run before the condition (inside the function literal of
+// the simple form).
+func (l *lowerer) ternaryStmts(x *ast.TernaryExpr, typ types.Type, head []ast.Stmt, cond, a, b ast.Expr, aPre, bPre []ast.Stmt, pre *[]ast.Stmt) ast.Expr {
+	pos := x.Pos()
 	if len(aPre) == 0 && len(bPre) == 0 {
-		// func() T { if cond { return a }; return b }()
+		// func() T { head; if cond { return a }; return b }()
 		lit := &ast.FuncLit{
 			Type: &ast.FuncType{Func: pos, Params: &ast.FieldList{Opening: pos, Closing: pos}, Results: &ast.FieldList{List: []*ast.Field{{Type: l.typeExpr(typ, pos)}}}},
-			Body: &ast.BlockStmt{Lbrace: pos, List: []ast.Stmt{
+			Body: &ast.BlockStmt{Lbrace: pos, List: slices.Concat(head, []ast.Stmt{
 				&ast.IfStmt{If: pos, Cond: cond, Body: &ast.BlockStmt{Lbrace: x.X.Pos(), List: []ast.Stmt{&ast.ReturnStmt{Return: x.X.Pos(), Results: []ast.Expr{a}}}, Rbrace: x.X.End()}},
 				&ast.ReturnStmt{Return: x.Y.Pos(), Results: []ast.Expr{b}},
-			}, Rbrace: x.End()},
+			}), Rbrace: x.End()},
 		}
 		return &ast.CallExpr{Fun: lit, Lparen: x.End(), Rparen: x.End()}
 	}
+	*pre = append(*pre, head...)
 
 	// var t T; if cond { pre(a); t = a } else { pre(b); t = b }
 	t := l.temp(pos, "v")

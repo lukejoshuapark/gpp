@@ -116,7 +116,9 @@ type actionDesc struct {
 // A Checker maintains the state of the type checker.
 // It must be created with [NewChecker].
 type Checker struct {
-	partialInference bool // G++: infer leaves unknown type arguments nil (see inferPartial)
+	partialInference bool                     // G++: infer leaves unknown type arguments nil (see inferPartial)
+	exhaustive       map[*ast.SwitchStmt]bool // G++: switches covering every variant of an enum
+	bindable         map[*ast.IsExpr]bool     // G++: is expressions that may bind names
 
 	// package information
 	// (initialized by NewChecker, valid for the life-time of checker)

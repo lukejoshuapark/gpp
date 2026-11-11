@@ -893,6 +893,18 @@ func (p *printer) expr1(expr ast.Expr, prec1, depth int) {
 		p.print(token.COLON)
 		p.ternaryBranch(x.Colon, x.Y, depth)
 
+	case *ast.IsExpr:
+		p.expr1(x.X, token.EQL.Precedence(), depth)
+		p.print(blank)
+		p.setPos(x.Is)
+		p.print(&ast.Ident{NamePos: x.Is, Name: "is"}, blank)
+		p.expr1(x.Pattern, token.HighestPrec, depth)
+
+	case *ast.EnumType:
+		p.setPos(x.Enum)
+		p.print(&ast.Ident{NamePos: x.Enum, Name: "enum"})
+		p.enumVariants(x.Variants)
+
 	case *ast.TryExpr:
 		p.expr1(x.X, token.HighestPrec, depth)
 		p.setPos(x.Question)
@@ -2083,4 +2095,53 @@ func (p *printer) ternaryBranch(opPos token.Pos, x ast.Expr, depth int) {
 	}
 	p.print(blank)
 	p.expr0(x, depth)
+}
+
+// enumVariants prints the variants of a G++ enum type, on one line if they
+// were on one line in the source.
+func (p *printer) enumVariants(fields *ast.FieldList) {
+	lbrace, rbrace, list := fields.Opening, fields.Closing, fields.List
+	variant := func(f *ast.Field) {
+		p.expr(f.Names[0])
+		if f.Type != nil {
+			p.print(token.LPAREN)
+			p.expr(f.Type)
+			p.print(token.RPAREN)
+		}
+	}
+	oneLine := lbrace.IsValid() && rbrace.IsValid() && p.lineFor(lbrace) == p.lineFor(rbrace) && !p.commentBefore(p.posFor(rbrace))
+	if oneLine {
+		p.print(blank)
+		p.setPos(lbrace)
+		p.print(token.LBRACE, blank)
+		for i, f := range list {
+			if i > 0 {
+				p.print(token.SEMICOLON, blank)
+			}
+			variant(f)
+		}
+		p.print(blank)
+		p.setPos(rbrace)
+		p.print(token.RBRACE)
+		return
+	}
+	p.print(blank)
+	p.setPos(lbrace)
+	p.print(token.LBRACE, indent, formfeed)
+	var line int
+	for i, f := range list {
+		if i > 0 {
+			p.linebreak(p.lineFor(f.Pos()), 1, ignore, p.linesFrom(line) > 0)
+		}
+		p.setComment(f.Doc)
+		p.recordLine(&line)
+		variant(f)
+		if f.Comment != nil {
+			p.print(vtab)
+			p.setComment(f.Comment)
+		}
+	}
+	p.print(unindent, formfeed)
+	p.setPos(rbrace)
+	p.print(token.RBRACE)
 }

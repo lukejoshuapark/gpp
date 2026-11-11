@@ -313,6 +313,9 @@ func (check *Checker) typInternal(e0 ast.Expr, def *TypeName) (T Type) {
 		check.structType(typ, e)
 		return typ
 
+	case *ast.EnumType:
+		return check.enumType(e, def)
+
 	case *ast.StarExpr:
 		typ := new(Pointer)
 		typ.base = Typ[Invalid] // avoid nil base in invalid recursive type declaration

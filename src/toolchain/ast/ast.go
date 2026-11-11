@@ -349,6 +349,14 @@ type (
 		Block  *BlockStmt // block body, or nil
 	}
 
+	// An IsExpr node represents a G++ variant test: X is Pattern, where
+	// Pattern is T.Variant or T.Variant(name).
+	IsExpr struct {
+		X       Expr      // enum value
+		Is      token.Pos // position of "is"
+		Pattern Expr      // *SelectorExpr or *CallExpr
+	}
+
 	// A FuncLit node represents a function literal.
 	FuncLit struct {
 		Type *FuncType  // function type
@@ -488,6 +496,14 @@ type (
 
 	// Pointer types are represented via StarExpr nodes.
 
+	// An EnumType node represents a G++ enum type: enum { A; B(T) }.
+	// Each variant is a Field with one name and, if the variant carries a
+	// value, its Type.
+	EnumType struct {
+		Enum     token.Pos  // position of "enum"
+		Variants *FieldList // variants; Opening and Closing are the braces
+	}
+
 	// A FuncType node represents a function type.
 	FuncType struct {
 		Func       token.Pos  // position of "func" keyword (token.NoPos if there is no "func")
@@ -528,6 +544,8 @@ func (x *BasicLit) Pos() token.Pos    { return x.ValuePos }
 func (x *FuncLit) Pos() token.Pos     { return x.Type.Pos() }
 func (x *TernaryExpr) Pos() token.Pos { return x.Cond.Pos() }
 func (x *TryExpr) Pos() token.Pos     { return x.X.Pos() }
+func (x *EnumType) Pos() token.Pos    { return x.Enum }
+func (x *IsExpr) Pos() token.Pos      { return x.X.Pos() }
 func (x *LambdaExpr) Pos() token.Pos {
 	if x.Params.Opening.IsValid() {
 		return x.Params.Opening
@@ -583,6 +601,8 @@ func (x *BasicLit) End() token.Pos {
 func (x *FuncLit) End() token.Pos     { return x.Body.End() }
 func (x *TernaryExpr) End() token.Pos { return x.Y.End() }
 func (x *TryExpr) End() token.Pos     { return x.Question + 1 }
+func (x *EnumType) End() token.Pos    { return x.Variants.End() }
+func (x *IsExpr) End() token.Pos      { return x.Pattern.End() }
 func (x *LambdaExpr) End() token.Pos {
 	if x.Block != nil {
 		return x.Block.End()
@@ -622,6 +642,8 @@ func (*BasicLit) exprNode()       {}
 func (*FuncLit) exprNode()        {}
 func (*TernaryExpr) exprNode()    {}
 func (*TryExpr) exprNode()        {}
+func (*EnumType) exprNode()       {}
+func (*IsExpr) exprNode()         {}
 func (*LambdaExpr) exprNode()     {}
 func (*CompositeLit) exprNode()   {}
 func (*ParenExpr) exprNode()      {}

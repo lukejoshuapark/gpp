@@ -55,9 +55,9 @@ front end, forked from Go 1.27 and extended:
 | package   | role | forked from |
 |-----------|------|-------------|
 | `lexer`   | tokens, including G++'s `?` (postfix and ternary) and `=>` | `go/scanner` |
-| `ast`     | syntax trees, plus `TernaryExpr`, `TryExpr`, `LambdaExpr` | `go/ast` |
+| `ast`     | syntax trees, plus `TernaryExpr`, `TryExpr`, `LambdaExpr`, `EnumType`, `IsExpr` | `go/ast` |
 | `parser`  | parsing | `go/parser` |
-| `types`   | type checking, including lambda inference (`types/gpp.go`) | `go/types` |
+| `types`   | type checking, including lambda inference (`types/gpp.go`) and enums (`types/gpp_enum.go`) | `go/types` |
 | `printer`, `format` | formatting (`gpp fmt`) | `go/printer`, `go/format` |
 | `lower`   | rewrites G++ constructs into Go and prints Go with `//line` directives | — |
 | `driver`  | loads packages (via `go list`), type-checks, lowers, builds | — |
@@ -142,3 +142,7 @@ feature in `features.md`.
   statement.
 - A lambda or ternary whose type mentions an unexported type from another
   package cannot be translated. Give the expression an explicit type.
+- Enums are structs to the go command: Go code (and `encoding/json`) sees
+  their internal `GPP_` fields. Generic enums get a `String` method when
+  translated, but G++ code can't call it or use it to satisfy an interface,
+  because the type checker doesn't know about it.

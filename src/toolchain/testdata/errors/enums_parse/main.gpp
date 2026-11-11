@@ -1,0 +1,11 @@
+package main
+
+type Shape enum {
+	Circle(float64)
+	Rect(float64, float64)
+	Empty
+}
+
+type None enum {}
+
+func main() {}

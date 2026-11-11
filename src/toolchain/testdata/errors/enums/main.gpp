@@ -1,0 +1,57 @@
+package main
+
+type Shape enum {
+	Empty
+	Circle(float64)
+	Circle(int)
+}
+
+type Color enum { Red; Green }
+
+func (c Color) Red() {}
+
+type Option[T any] enum {
+	None
+	Some(T)
+}
+
+func bad(s Shape, c Color) int {
+	_ = Shape{}
+	_ = s.GPP_tag
+	_ = Shape.Square
+	_ = Option.None
+	_ = Shape.Circle("x")
+	x := s is Shape.Circle(r)
+	if s is Shape.Circle(r) || true {
+	}
+	if 3 is Shape.Empty {
+	}
+	if s is Color.Red {
+	}
+	switch s {
+	case Shape.Circle(r):
+		_ = r
+	case Shape.Empty(e):
+	case Shape.Circle(_):
+	}
+	switch c {
+	case Color.Red(x), Color.Green(y):
+	case 1:
+	}
+	switch c {
+	case Color.Red:
+		fallthrough
+	case Color.Green:
+	}
+	return 0
+}
+
+func missingReturn(c Color) int {
+	switch c {
+	case Color.Red:
+		return 1
+	case Color.Green:
+	}
+}
+
+func main() {}

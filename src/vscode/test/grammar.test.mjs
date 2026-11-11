@@ -93,4 +93,9 @@ expect("func (p P) Get() Point => p.pt", ["Point", "variable.other.gpp"], ["=>",
 expect("b := Button{OnClick: n => n}", ["n", "variable.parameter.gpp"], ["=>", "keyword.operator.arrow.gpp"]);
 expect("return x => x + 1", ["x", "variable.parameter.gpp"]);
 
+expect("type Shape enum {", ["type", "storage.type.gpp"], ["Shape", "entity.name.type.enum.gpp"], ["enum", "storage.type.enum.gpp"]);
+expect("type Option[T any] enum { None; Some(T) }", ["Option", "entity.name.type.enum.gpp"], ["enum", "storage.type.enum.gpp"]);
+expect("if s is Shape.Circle(r) && r > 5 {", ["is", "keyword.operator.is.gpp"], ["Circle", "entity.name.function.call.gpp"]);
+expect("is := 3", ["is", "variable.other.gpp"]);
+
 console.log("grammar tests passed");

@@ -158,6 +158,7 @@ func (check *Checker) objDecl(obj Object) {
 		// invalid recursive types are detected via path
 		check.typeDecl(obj, d.tdecl)
 		check.collectMethods(obj) // methods can only be added to top-level types
+		check.enumStringMethod(obj)
 	case *Func:
 		// functions may be recursive - no need to track dependencies
 		check.funcDecl(obj, d)
@@ -572,6 +573,9 @@ func (check *Checker) typeDecl(obj *TypeName, tdecl *ast.TypeSpec) {
 	rhs = check.declaredType(tdecl.Type, obj)
 	assert(rhs != nil)
 	named.fromRHS = rhs
+	if rn := asNamed(rhs); rn != nil && rn.Origin().enum != nil && rn.TypeArgs().Len() == 0 {
+		named.enum = rn.Origin().enum // G++: type B A, where A is an enum
+	}
 
 	// spec: "In a type definition the given type cannot be a type parameter."
 	// (See also go.dev/issue/45639.)

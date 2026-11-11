@@ -1894,6 +1894,14 @@ func (p *parser) parseBinaryExpr(x ast.Expr, prec1 int) ast.Expr {
 	defer func() { p.nestLev -= n }()
 	for n = 1; ; n++ {
 		incNestLev(p)
+		if p.atIs() {
+			// G++: x is T.Variant(name), at the precedence of ==
+			if token.EQL.Precedence() < prec1 {
+				return x
+			}
+			x = p.parseIsExpr(x)
+			continue
+		}
 		op, oprec := p.tokPrec()
 		if oprec < prec1 {
 			return x
@@ -2623,7 +2631,7 @@ func (p *parser) parseGenericType(spec *ast.TypeSpec, openPos token.Pos, name0 *
 		spec.Assign = p.pos
 		p.next()
 	}
-	spec.Type = p.parseType()
+	spec.Type = p.parseTypeSpecType()
 }
 
 func (p *parser) parseTypeSpec(doc *ast.CommentGroup, _ token.Token, _ int) ast.Spec {
@@ -2693,7 +2701,7 @@ func (p *parser) parseTypeSpec(doc *ast.CommentGroup, _ token.Token, _ int) ast.
 			spec.Assign = p.pos
 			p.next()
 		}
-		spec.Type = p.parseType()
+		spec.Type = p.parseTypeSpecType()
 	}
 
 	spec.Comment = p.expectSemi()

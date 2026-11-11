@@ -1,0 +1,27 @@
+// Package geo declares enums used from another package.
+package geo
+
+type Size struct{ W, H float64 }
+
+// Shape is a shape.
+type Shape enum {
+	Empty
+	Circle(float64)
+	Rect(Size)
+}
+
+func (s Shape) Area() float64 {
+	switch s {
+	case Shape.Circle(r):
+		return 3 * r * r
+	case Shape.Rect(sz):
+		return sz.W * sz.H
+	case Shape.Empty:
+		return 0
+	}
+}
+
+// Dir has its own String method.
+type Dir enum { North; South }
+
+func (d Dir) String() string => d == Dir.North ? "N" : "S"

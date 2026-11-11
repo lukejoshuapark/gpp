@@ -65,7 +65,17 @@ func offsetOf(text []byte, p Position) int {
 }
 
 // posRange returns the LSP range of [start, end) in the file.
+// An invalid or misordered end (incomplete code) gives an empty range.
 func posRange(fset *token.FileSet, text []byte, start, end token.Pos) Range {
+	if tf := fset.File(start); tf != nil {
+		// a missing closing token is placed at (or past) the end of file
+		if last := token.Pos(tf.Base() + tf.Size()); end > last {
+			end = last
+		}
+	}
+	if !end.IsValid() || end < start {
+		end = start
+	}
 	s, e := fset.PositionFor(start, false), fset.PositionFor(end, false)
 	return Range{Start: toLSP(text, s.Line, s.Column), End: toLSP(text, e.Line, e.Column)}
 }

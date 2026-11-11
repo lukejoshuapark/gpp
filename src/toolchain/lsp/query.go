@@ -130,7 +130,11 @@ func describe(obj types.Object, pkg *types.Package) string {
 		if _, isParam := obj.Type().(*types.TypeParam); isParam {
 			return fmt.Sprintf("type parameter %s %s", obj.Name(), types.TypeString(under, q))
 		}
-		s := fmt.Sprintf("type %s%s %s", obj.Name(), tparams, typeBody(under, q))
+		body := typeBody(under, q)
+		if en := types.EnumOf(obj.Type()); en != nil {
+			body = enumBody(en, obj.Type(), q)
+		}
+		s := fmt.Sprintf("type %s%s %s", obj.Name(), tparams, body)
 		if n, ok := obj.Type().(*types.Named); ok && n.NumMethods() > 0 {
 			if _, isIface := under.(*types.Interface); !isIface {
 				s += "\n"
@@ -345,7 +349,16 @@ func (s *server) documentSymbols(p DocumentSymbolParams) []DocumentSymbol {
 	}
 	fset := snap.fset
 	sym := func(name, detail string, kind int, n ast.Node, id *ast.Ident) DocumentSymbol {
-		return DocumentSymbol{Name: name, Detail: detail, Kind: kind, Range: posRange(fset, text, n.Pos(), n.End()), SelectionRange: posRange(fset, text, id.Pos(), id.End())}
+		// In incomplete code a node may lack an end (or even a start);
+		// the range must still contain the name.
+		start, end := n.Pos(), n.End()
+		if !start.IsValid() || start > id.Pos() {
+			start = id.Pos()
+		}
+		if !end.IsValid() || end < id.End() {
+			end = id.End()
+		}
+		return DocumentSymbol{Name: name, Detail: detail, Kind: kind, Range: posRange(fset, text, start, end), SelectionRange: posRange(fset, text, id.Pos(), id.End())}
 	}
 	q := qualifier(fi.pkg.Types)
 	for _, d := range fi.file.Decls {
@@ -381,6 +394,15 @@ func (s *server) documentSymbols(p DocumentSymbolParams) []DocumentSymbol {
 							for _, n := range f.Names {
 								children = append(children, sym(n.Name, "", SymbolMethod, f, n))
 							}
+						}
+					case *ast.EnumType:
+						kind = SymbolEnum
+						for _, f := range t.Variants.List {
+							detail := ""
+							if f.Type != nil {
+								detail = typeStringOf(fi, f.Type)
+							}
+							children = append(children, sym(f.Names[0].Name, detail, SymbolEnumMember, f, f.Names[0]))
 						}
 					}
 					ds := sym(spec.Name.Name, "", kind, spec, spec.Name)
@@ -542,4 +564,20 @@ func calleeObject(fi *fileInfo, fun ast.Expr) types.Object {
 		return calleeObject(fi, f.X)
 	}
 	return nil
+}
+
+// enumBody writes an enum type's variants.
+func enumBody(en *types.Enum, t types.Type, q types.Qualifier) string {
+	var b strings.Builder
+	b.WriteString("enum {\n")
+	for i := range en.Len() {
+		v := en.Variant(i)
+		b.WriteString("\t" + v.Name())
+		if vt := v.ValueType(t); vt != nil {
+			b.WriteString("(" + types.TypeString(vt, q) + ")")
+		}
+		b.WriteByte('\n')
+	}
+	b.WriteByte('}')
+	return b.String()
 }
