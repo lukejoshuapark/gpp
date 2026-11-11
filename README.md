@@ -144,7 +144,8 @@ feature in `features.md`.
   statement.
 - A lambda or ternary whose type mentions an unexported type from another
   package cannot be translated. Give the expression an explicit type.
-- Enums are structs to the go command: Go code (and `encoding/json`) sees
-  their internal `GPP_` fields. Generic enums get a `String` method when
-  translated, but G++ code can't call it or use it to satisfy an interface,
-  because the type checker doesn't know about it.
+- Enums are structs to the go command: Go code, and reflection-based encoders
+  other than JSON and text (such as `encoding/xml`), see their internal
+  `GPP_` fields. Generic enums get their `String` and encoding methods when
+  translated, but G++ code can't call them or use them to satisfy an
+  interface, because the type checker doesn't know about them.

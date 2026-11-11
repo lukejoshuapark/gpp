@@ -127,8 +127,8 @@ type Named struct {
 	// accessed.
 	methods []*Func
 
-	enum       *Enum // G++: variants, if this is an enum type
-	enumString bool  // G++: the enum's String method is generated
+	enum    *Enum    // G++: variants, if this is an enum type
+	enumGen []string // G++: the enum's generated methods
 
 	// loader may be provided to lazily load type parameters, underlying type, methods, and delayed functions
 	loader func(*Named) ([]*TypeParam, Type, []*Func, []func())

@@ -403,8 +403,13 @@ func TestEnums(t *testing.T) {
 	}
 	c.call("textDocument/completion", CompletionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: at(t, src, "_ = s.", 6)}, &list)
 	got = completionLabels(list.Items)
-	if _, ok := got["String"]; !ok || len(got) != 1 {
+	if _, ok := got["String"]; !ok {
 		t.Errorf("enum value completion: %v", got)
+	}
+	for name := range got {
+		if strings.HasPrefix(name, "GPP_") {
+			t.Errorf("internal field %s offered", name)
+		}
 	}
 
 	c.change(uri, 3, enumSrc)

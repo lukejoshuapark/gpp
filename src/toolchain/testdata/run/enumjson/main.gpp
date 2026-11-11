@@ -1,0 +1,133 @@
+package main
+
+import (
+	"encoding"
+	"encoding/json"
+	"flag"
+	"fmt"
+)
+
+type Size struct {
+	W float64 `json:"w"`
+	H float64 `json:"h"`
+}
+
+// An enum without values encodes as a string.
+type Color enum {
+	Red   `json:"red"`
+	Green `json:"green"`
+	Blue // no tag: its name
+}
+
+// An enum with values encodes as {"type": ..., "value": ...}.
+type Shape enum {
+	Empty           `json:"empty"`
+	Circle(float64) `json:"circle"`
+	Rect(Size)      `json:"rect"`
+}
+
+type Option[T any] enum {
+	None
+	Some(T)
+}
+
+// Option encoded as null or the bare value: write the methods yourself
+// (both: the generated UnmarshalJSON would expect {"type": ...}).
+type Maybe enum {
+	Nothing
+	Just(int)
+}
+
+func (m Maybe) MarshalJSON() ([]byte, error) {
+	switch m {
+	case Maybe.Just(n):
+		return json.Marshal(n)
+	case Maybe.Nothing:
+		return []byte("null"), nil
+	}
+}
+
+func (m *Maybe) UnmarshalJSON(b []byte) error {
+	if string(b) == "null" {
+		*m = Maybe.Nothing
+		return nil
+	}
+	var n int
+	json.Unmarshal(b, &n)?
+	*m = Maybe.Just(n)
+	return nil
+}
+
+type Drawing struct {
+	Fill    Color          `json:"fill"`
+	Stroke  Color          `json:"stroke,omitzero"`
+	Shapes  []Shape        `json:"shapes"`
+	Counts  map[Color]int  `json:"counts"`
+	Label   Option[string] `json:"label"`
+	Opacity Maybe          `json:"opacity"`
+}
+
+// the checker knows the generated methods
+var (
+	_ json.Marshaler           = Shape.Empty
+	_ json.Unmarshaler         = new(Shape)
+	_ encoding.TextMarshaler   = Color.Red
+	_ encoding.TextUnmarshaler = new(Color)
+	_ fmt.Stringer             = Color.Red
+)
+
+func show(v any) {
+	b, err := json.Marshal(v)
+	fmt.Println(string(b), err)
+}
+
+func decode[T any](s string) {
+	var v T
+	err := json.Unmarshal([]byte(s), &v)
+	fmt.Printf("%v %v\n", v, err)
+}
+
+func main() {
+	show(Color.Green)
+	show(Color.Blue)
+	show(Shape.Circle(1.5))
+	show(Shape.Empty)
+	show(Option.Some(3))
+	show(Option[int].None)
+
+	d := Drawing{
+		Fill:    Color.Blue,
+		Shapes:  []Shape{Shape.Circle(1), Shape.Rect(Size{2, 3}), Shape.Empty},
+		Counts:  map[Color]int{Color.Red: 1, Color.Green: 2},
+		Label:   Option.Some("hi"),
+		Opacity: Maybe.Just(50),
+	}
+	show(d)
+
+	// round trip
+	b, _ := json.Marshal(d)
+	var back Drawing
+	err := json.Unmarshal(b, &back)
+	fmt.Println(err, back.Fill, back.Shapes, back.Counts, back.Label, back.Opacity)
+
+	// decoding
+	decode[Color](`"green"`)
+	decode[Color](`"Blue"`)
+	decode[Color](`"purple"`)
+	decode[Shape](`{"type":"rect","value":{"w":4,"h":5}}`)
+	decode[Shape](`{"type":"empty"}`)
+	decode[Shape](`null`)
+	decode[Shape](`{"type":"square"}`)
+	decode[Shape](`{"type":"circle"}`)
+	decode[Shape](`{"value":2}`)
+	decode[Shape](`{"type":"circle","value":"big"}`)
+	decode[Shape](`"circle"`)
+	decode[Option[string]](`{"type":"Some","value":"x"}`)
+
+	// text marshalling works elsewhere too, e.g. flags
+	var c Color
+	fs := flag.NewFlagSet("x", flag.ContinueOnError)
+	fs.TextVar(&c, "color", Color.Red, "a color")
+	fs.Parse([]string{"-color=green"})
+	fmt.Println(c)
+}

@@ -25,6 +25,10 @@ func TestGppSyntax(t *testing.T) {
 			"package p\nvar a = f()?   \"loading\"\nvar b = map[int]int{k()?: 1}\nvar c = xs[lo()?:]\nvar d = g()?  err=>err\n",
 			"package p\n\nvar a = f()? \"loading\"\nvar b = map[int]int{k()?: 1}\nvar c = xs[lo()?:]\nvar d = g()? err => err\n",
 		},
+		{
+			"package p\ntype C enum {\n\tRed `json:\"red\"`\n\tBlueish(int)   `json:\"blue\"`\n}\n",
+			"package p\n\ntype C enum {\n\tRed          `json:\"red\"`\n\tBlueish(int) `json:\"blue\"`\n}\n",
+		},
 	}
 	for _, tt := range tests {
 		got, err := Source([]byte(tt.in))

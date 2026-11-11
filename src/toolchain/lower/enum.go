@@ -17,23 +17,28 @@ package lower
 // declares one.
 
 import (
+	"bytes"
+	"fmt"
 	"go/token"
 	"slices"
 	"strconv"
+	"strings"
 
 	"gpp/ast"
+	"gpp/printer"
 	"gpp/types"
 )
 
-// enumDecl lowers the enum type declaration spec, returning the String
-// method to add, if any.
-func (l *lowerer) enumDecl(spec *ast.TypeSpec, et *ast.EnumType) *ast.FuncDecl {
+// enumDecl lowers the enum type declaration spec, and generates its
+// methods (see enumMethods).
+func (l *lowerer) enumDecl(spec *ast.TypeSpec, et *ast.EnumType) {
 	pos := et.Enum
 	obj, _ := l.info.Defs[spec.Name].(*types.TypeName)
 	tagType := "uint8"
 	if len(et.Variants.List) > 256 {
 		tagType = "uint16"
 	}
+	payloads := map[string]ast.Expr{} // variant -> value type
 	fields := &ast.FieldList{Opening: et.Variants.Opening, Closing: et.Variants.Closing}
 	fields.List = append(fields.List, &ast.Field{
 		Names: []*ast.Ident{{NamePos: pos, Name: types.EnumTagField}},
@@ -42,6 +47,7 @@ func (l *lowerer) enumDecl(spec *ast.TypeSpec, et *ast.EnumType) *ast.FuncDecl {
 	for _, f := range et.Variants.List {
 		if f.Type != nil {
 			name := f.Names[0]
+			payloads[name.Name] = f.Type
 			fields.List = append(fields.List, &ast.Field{
 				Doc:   f.Doc,
 				Names: []*ast.Ident{{NamePos: name.Pos(), Name: "GPP_" + name.Name}},
@@ -52,67 +58,132 @@ func (l *lowerer) enumDecl(spec *ast.TypeSpec, et *ast.EnumType) *ast.FuncDecl {
 	spec.Type = &ast.StructType{Struct: pos, Fields: fields}
 
 	if obj == nil {
-		return nil
+		return
 	}
-	named, _ := obj.Type().(*types.Named)
-	if named == nil || !types.EnumHasGeneratedString(named) {
-		return nil
+	if named, _ := obj.Type().(*types.Named); named != nil {
+		l.enumMethods(spec, named, payloads)
 	}
-	return l.enumString(spec, named, pos)
 }
 
-// enumString generates the String method of an enum.
-func (l *lowerer) enumString(spec *ast.TypeSpec, named *types.Named, pos token.Pos) *ast.FuncDecl {
-	id := func(name string) *ast.Ident { return &ast.Ident{NamePos: pos, Name: name} }
-	str := func(s string) *ast.BasicLit {
-		return &ast.BasicLit{ValuePos: pos, Kind: token.STRING, Value: strconv.Quote(s)}
-	}
-	recv := l.temp(pos, "e")
-	sprintf := func(format string, arg ast.Expr) ast.Expr {
-		return &ast.CallExpr{Fun: &ast.SelectorExpr{X: id(l.importName("fmt")), Sel: id("Sprintf")}, Lparen: pos, Args: []ast.Expr{str(format), arg}, Rparen: pos}
-	}
-	field := func(name string) ast.Expr { return &ast.SelectorExpr{X: ident(recv), Sel: id(name)} }
-
+// enumMethods generates the methods of an enum (unless it declares them):
+//
+//   - String: Circle(2), or Empty for a variant without a value.
+//   - For an enum without values, MarshalText and UnmarshalText: a variant
+//     encodes as its name (or the name in its json tag), which also makes
+//     the enum work as a JSON object key.
+//   - For an enum with values, MarshalJSON and UnmarshalJSON: a variant
+//     encodes as {"type": name} or {"type": name, "value": value}.
+//
+// The methods are written as Go source appended to the file.
+func (l *lowerer) enumMethods(spec *ast.TypeSpec, named *types.Named, payloads map[string]ast.Expr) {
 	en := types.EnumOf(named)
-	var clauses []ast.Stmt
-	for i := range en.Len() {
-		v := en.Variant(i)
-		var result ast.Expr = str(v.Name())
-		if v.HasValue() {
-			result = sprintf(v.Name()+"(%v)", field(v.FieldName()))
-		}
-		clauses = append(clauses, &ast.CaseClause{
-			Case: pos, Colon: pos,
-			List: []ast.Expr{&ast.BasicLit{ValuePos: pos, Kind: token.INT, Value: strconv.Itoa(i)}},
-			Body: []ast.Stmt{&ast.ReturnStmt{Return: pos, Results: []ast.Expr{result}}},
-		})
-	}
-	body := []ast.Stmt{
-		&ast.SwitchStmt{Switch: pos, Tag: field(types.EnumTagField), Body: &ast.BlockStmt{Lbrace: pos, List: clauses, Rbrace: pos}},
-		&ast.ReturnStmt{Return: pos, Results: []ast.Expr{sprintf(named.Obj().Name()+"(%d)", field(types.EnumTagField))}},
-	}
-
-	// receiver type: T or T[P, Q]
-	var rtype ast.Expr = id(spec.Name.Name)
+	name := spec.Name.Name
+	typ := name // with type parameters: Option[T]
 	if spec.TypeParams != nil {
-		var args []ast.Expr
+		var tps []string
 		for _, f := range spec.TypeParams.List {
 			for _, n := range f.Names {
-				args = append(args, id(n.Name))
+				tps = append(tps, n.Name)
 			}
 		}
-		if len(args) == 1 {
-			rtype = &ast.IndexExpr{X: rtype, Lbrack: pos, Index: args[0], Rbrack: pos}
-		} else {
-			rtype = &ast.IndexListExpr{X: rtype, Lbrack: pos, Indices: args, Rbrack: pos}
+		typ += "[" + strings.Join(tps, ", ") + "]"
+	}
+	tag := types.EnumTagField
+	fmtPkg := func() string { return l.importName("fmt") }
+	jsonPkg := func() string { return l.importName("encoding/json") }
+	var want []string // "a", "b" or "c"
+	for i := range en.Len() {
+		want = append(want, strconv.Quote(en.Variant(i).JSONName()))
+	}
+	wantList := strings.Join(want, ", ")
+	if len(want) > 1 {
+		wantList = strings.Join(want[:len(want)-1], ", ") + " or " + want[len(want)-1]
+	}
+	construct := func(v *types.Variant, val string) string {
+		elts := []string{}
+		if v.Index() != 0 {
+			elts = append(elts, fmt.Sprintf("%s: %d", tag, v.Index()))
+		}
+		if val != "" {
+			elts = append(elts, fmt.Sprintf("%s: %s", v.FieldName(), val))
+		}
+		return typ + "{" + strings.Join(elts, ", ") + "}"
+	}
+
+	var b strings.Builder
+	for _, m := range types.EnumGeneratedMethods(named) {
+		switch m {
+		case "String":
+			fmt.Fprintf(&b, "\nfunc (e %s) String() string {\n\tswitch e.%s {\n", typ, tag)
+			for i := range en.Len() {
+				v := en.Variant(i)
+				if v.HasValue() {
+					fmt.Fprintf(&b, "\tcase %d:\n\t\treturn %s.Sprintf(%q, e.%s)\n", i, fmtPkg(), v.Name()+"(%v)", v.FieldName())
+				} else {
+					fmt.Fprintf(&b, "\tcase %d:\n\t\treturn %q\n", i, v.Name())
+				}
+			}
+			fmt.Fprintf(&b, "\t}\n\treturn %s.Sprintf(%q, e.%s)\n}\n", fmtPkg(), name+"(%d)", tag)
+
+		case "MarshalText":
+			fmt.Fprintf(&b, "\nfunc (e %s) MarshalText() ([]byte, error) {\n\tswitch e.%s {\n", typ, tag)
+			for i := range en.Len() {
+				fmt.Fprintf(&b, "\tcase %d:\n\t\treturn []byte(%q), nil\n", i, en.Variant(i).JSONName())
+			}
+			fmt.Fprintf(&b, "\t}\n\treturn nil, %s.Errorf(%q, e.%s)\n}\n", fmtPkg(), "invalid "+name+" value %d", tag)
+
+		case "UnmarshalText":
+			fmt.Fprintf(&b, "\nfunc (e *%s) UnmarshalText(b []byte) error {\n\tswitch string(b) {\n", typ)
+			for i := range en.Len() {
+				v := en.Variant(i)
+				fmt.Fprintf(&b, "\tcase %q:\n\t\t*e = %s\n", v.JSONName(), construct(v, ""))
+			}
+			fmt.Fprintf(&b, "\tdefault:\n\t\treturn %s.Errorf(%q, b)\n\t}\n\treturn nil\n}\n", fmtPkg(), "unknown "+name+" variant %q (want "+wantList+")")
+
+		case "MarshalJSON":
+			fmt.Fprintf(&b, "\nfunc (e %s) MarshalJSON() ([]byte, error) {\n\tswitch e.%s {\n", typ, tag)
+			for i := range en.Len() {
+				v := en.Variant(i)
+				if v.HasValue() {
+					fmt.Fprintf(&b, "\tcase %d:\n\t\treturn %s.Marshal(struct {\n\t\t\tType  string `json:\"type\"`\n\t\t\tValue %s `json:\"value\"`\n\t\t}{%q, e.%s})\n",
+						i, jsonPkg(), l.source(payloads[v.Name()]), v.JSONName(), v.FieldName())
+				} else {
+					fmt.Fprintf(&b, "\tcase %d:\n\t\treturn %s.Marshal(struct {\n\t\t\tType string `json:\"type\"`\n\t\t}{%q})\n", i, jsonPkg(), v.JSONName())
+				}
+			}
+			fmt.Fprintf(&b, "\t}\n\treturn nil, %s.Errorf(%q, e.%s)\n}\n", fmtPkg(), "invalid "+name+" value %d", tag)
+
+		case "UnmarshalJSON":
+			fmt.Fprintf(&b, "\nfunc (e *%s) UnmarshalJSON(b []byte) error {\n", typ)
+			fmt.Fprintf(&b, "\tif string(b) == \"null\" {\n\t\treturn nil\n\t}\n")
+			fmt.Fprintf(&b, "\tif len(b) == 0 || b[0] != '{' {\n\t\treturn %s.Errorf(%q, b)\n\t}\n", fmtPkg(), "decoding "+name+`: want an object like {"type": ...}, not %s`)
+			fmt.Fprintf(&b, "\tvar v struct {\n\t\tType  *string `json:\"type\"`\n\t\tValue %s.RawMessage `json:\"value\"`\n\t}\n", jsonPkg())
+			fmt.Fprintf(&b, "\tif err := %s.Unmarshal(b, &v); err != nil {\n\t\treturn %s.Errorf(%q, err)\n\t}\n", jsonPkg(), fmtPkg(), "decoding "+name+": %w")
+			fmt.Fprintf(&b, "\tif v.Type == nil {\n\t\treturn %s.Errorf(%q)\n\t}\n", fmtPkg(), "decoding "+name+`: missing "type"`)
+			fmt.Fprintf(&b, "\tswitch *v.Type {\n")
+			for i := range en.Len() {
+				v := en.Variant(i)
+				fmt.Fprintf(&b, "\tcase %q:\n", v.JSONName())
+				if !v.HasValue() {
+					fmt.Fprintf(&b, "\t\t*e = %s\n", construct(v, ""))
+					continue
+				}
+				fmt.Fprintf(&b, "\t\tif v.Value == nil {\n\t\t\treturn %s.Errorf(%q)\n\t\t}\n", fmtPkg(), "decoding "+name+": variant "+strconv.Quote(v.JSONName())+` needs a "value"`)
+				fmt.Fprintf(&b, "\t\tvar x %s\n", l.source(payloads[v.Name()]))
+				fmt.Fprintf(&b, "\t\tif err := %s.Unmarshal(v.Value, &x); err != nil {\n\t\t\treturn %s.Errorf(%q, err)\n\t\t}\n", jsonPkg(), fmtPkg(), "decoding "+name+" "+strconv.Quote(v.JSONName())+": %w")
+				fmt.Fprintf(&b, "\t\t*e = %s\n", construct(v, "x"))
+			}
+			fmt.Fprintf(&b, "\tdefault:\n\t\treturn %s.Errorf(%q, *v.Type)\n\t}\n\treturn nil\n}\n", fmtPkg(), "unknown "+name+" variant %q (want "+wantList+")")
 		}
 	}
-	return &ast.FuncDecl{
-		Recv: &ast.FieldList{Opening: pos, List: []*ast.Field{{Names: []*ast.Ident{recv}, Type: rtype}}, Closing: pos},
-		Name: id("String"),
-		Type: &ast.FuncType{Func: pos, Params: &ast.FieldList{Opening: pos, Closing: pos}, Results: &ast.FieldList{List: []*ast.Field{{Type: id("string")}}}},
-		Body: &ast.BlockStmt{Lbrace: pos, List: body, Rbrace: pos},
-	}
+	l.generated = append(l.generated, b.String())
+}
+
+// source prints a (Go) expression.
+func (l *lowerer) source(x ast.Expr) string {
+	var b bytes.Buffer
+	printer.Fprint(&b, l.fset, x)
+	return b.String()
 }
 
 // variantOf returns the variant a selector denotes, or nil.

@@ -59,7 +59,6 @@ func File(fset *token.FileSet, pkg *types.Package, info *types.Info, f *ast.File
 	for _, d := range f.Decls {
 		l.decl(d)
 	}
-	f.Decls = append(f.Decls, l.extra...)
 	l.addImports()
 	if len(l.errs) > 0 {
 		return nil, l.errs
@@ -70,6 +69,12 @@ func File(fset *token.FileSet, pkg *types.Package, info *types.Info, f *ast.File
 	cfg := printer.Config{Mode: printer.UseSpaces | printer.TabIndent | printer.SourcePos, Tabwidth: 8}
 	if err := cfg.Fprint(&buf, fset, f); err != nil {
 		return nil, []*Error{{Pos: fset.Position(f.Pos()), Msg: "printing lowered file: " + err.Error()}}
+	}
+	if len(l.generated) > 0 {
+		fmt.Fprintf(&buf, "\n//line %s.generated:1\n", fset.Position(f.Pos()).Filename)
+		for _, g := range l.generated {
+			buf.WriteString(g)
+		}
 	}
 	return buf.Bytes(), nil
 }
@@ -91,8 +96,9 @@ type lowerer struct {
 	// wrapped records blocks lowering introduced around a statement, so
 	// labels move to the statement inside.
 	wrapped map[*ast.BlockStmt]bool
-	// extra holds declarations lowering adds (enum String methods).
-	extra []ast.Decl
+	// generated holds Go source lowering adds after the file (enum
+	// methods).
+	generated []string
 }
 
 func (l *lowerer) errorf(pos token.Pos, format string, args ...any) {
@@ -124,9 +130,7 @@ func (l *lowerer) decl(d ast.Decl) {
 		for _, spec := range d.Specs {
 			if ts, ok := spec.(*ast.TypeSpec); ok {
 				if et, ok := ts.Type.(*ast.EnumType); ok {
-					if m := l.enumDecl(ts, et); m != nil {
-						l.extra = append(l.extra, m)
-					}
+					l.enumDecl(ts, et)
 				}
 			}
 			if vs, ok := spec.(*ast.ValueSpec); ok {

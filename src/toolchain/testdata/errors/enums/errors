@@ -1,19 +1,22 @@
 main.gpp:6:2: variant Circle redeclared in enum Shape
-main.gpp:11:16: method Color.Red has the same name as a variant of the enum
-main.gpp:19:6: cannot write a composite literal of enum type Shape: use a variant, as in Shape.Empty
-main.gpp:20:8: GPP_tag is reserved: use switch or is to read an enum's value
-main.gpp:21:12: Shape has no variant Square
-main.gpp:22:6: cannot infer type arguments for Option.None: write them out, as in Option[T].None
-main.gpp:23:19: cannot use "x" (untyped string constant) as float64 value in argument to Shape.Circle
-main.gpp:24:2: declared and not used: x
-main.gpp:24:25: r can only be bound in the condition of an if or ternary, in a chain of &&
-main.gpp:25:23: r can only be bound in the condition of an if or ternary, in a chain of &&
-main.gpp:27:5: is needs a value of enum type, not untyped int
-main.gpp:29:10: pattern type Color does not match Shape
-main.gpp:34:19: Shape.Empty has no value to bind
-main.gpp:35:7: duplicate case Shape.Circle(_) in switch
-main.gpp:38:17: Color.Red has no value to bind
-main.gpp:38:33: Color.Green has no value to bind
-main.gpp:39:7: 1 is not a variant pattern: write Color.Variant or Color.Variant(name)
-main.gpp:43:3: fallthrough statement out of place
-main.gpp:55:1: missing return
+main.gpp:12:4: a variant's json tag can only rename it, not ",omitempty"
+main.gpp:13:4: json:"-" is not supported for variants
+main.gpp:15:2: variants C and D have the same JSON name "x"
+main.gpp:19:16: method Color.Red has the same name as a variant of the enum
+main.gpp:27:6: cannot write a composite literal of enum type Shape: use a variant, as in Shape.Empty
+main.gpp:28:8: GPP_tag is reserved: use switch or is to read an enum's value
+main.gpp:29:12: Shape has no variant Square
+main.gpp:30:6: cannot infer type arguments for Option.None: write them out, as in Option[T].None
+main.gpp:31:19: cannot use "x" (untyped string constant) as float64 value in argument to Shape.Circle
+main.gpp:32:2: declared and not used: x
+main.gpp:32:25: r can only be bound in the condition of an if or ternary, in a chain of &&
+main.gpp:33:23: r can only be bound in the condition of an if or ternary, in a chain of &&
+main.gpp:35:5: is needs a value of enum type, not untyped int
+main.gpp:37:10: pattern type Color does not match Shape
+main.gpp:42:19: Shape.Empty has no value to bind
+main.gpp:43:7: duplicate case Shape.Circle(_) in switch
+main.gpp:46:17: Color.Red has no value to bind
+main.gpp:46:33: Color.Green has no value to bind
+main.gpp:47:7: 1 is not a variant pattern: write Color.Variant or Color.Variant(name)
+main.gpp:51:3: fallthrough statement out of place
+main.gpp:63:1: missing return

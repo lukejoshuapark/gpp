@@ -21,6 +21,8 @@ package types
 
 import (
 	"go/token"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"gpp/ast"
@@ -59,8 +61,28 @@ func (e *Enum) Lookup(name string) *Variant {
 // one with a value.
 type Variant struct {
 	object
-	index   int
-	payload bool
+	index    int
+	payload  bool
+	jsonName string // from the variant's json tag, or ""
+}
+
+// JSONName returns the variant's name in JSON (and text): its json tag's
+// name, or else its name.
+func (v *Variant) JSONName() string {
+	if v.jsonName != "" {
+		return v.jsonName
+	}
+	return v.name
+}
+
+// HasValues reports whether any variant of the enum carries a value.
+func (e *Enum) HasValues() bool {
+	for _, v := range e.variants {
+		if v.payload {
+			return true
+		}
+	}
+	return false
 }
 
 // enumType returns the enum type the variant belongs to.
@@ -108,11 +130,15 @@ func EnumOf(t Type) *Enum {
 	return nil
 }
 
-// EnumHasGeneratedString reports whether the enum type n gets a generated
-// String method (it declares none of its own).
-func EnumHasGeneratedString(n *Named) bool {
+// EnumGeneratedMethods returns the methods generated for the enum type n
+// (those of String, MarshalText, UnmarshalText, MarshalJSON and
+// UnmarshalJSON that apply and that it does not declare itself).
+func EnumGeneratedMethods(n *Named) []string {
 	o := n.Origin()
-	return o.enum != nil && o.enumString
+	if o.enum == nil {
+		return nil
+	}
+	return o.enumGen
 }
 
 // enumType type-checks an enum type expression, the RHS of the
@@ -134,6 +160,7 @@ func (check *Checker) enumType(e *ast.EnumType, def *TypeName) Type {
 	fields := []*Var{NewField(e.Enum, check.pkg, EnumTagField, tag, false)}
 	enum := &Enum{}
 	seen := map[string]bool{}
+	jsonNames := map[string]string{} // JSON name -> variant
 	for i, f := range e.Variants.List {
 		name := f.Names[0]
 		v := &Variant{object: object{pos: name.Pos(), pkg: check.pkg, name: name.Name}, index: i}
@@ -157,6 +184,13 @@ func (check *Checker) enumType(e *ast.EnumType, def *TypeName) Type {
 		} else {
 			v.typ = named
 		}
+		if f.Tag != nil {
+			v.jsonName = check.variantTag(f.Tag, jsonNames)
+		}
+		if other, ok := jsonNames[v.JSONName()]; ok {
+			check.errorf(f, DuplicateDecl, "variants %s and %s have the same JSON name %q", other, v.name, v.JSONName())
+		}
+		jsonNames[v.JSONName()] = v.name
 		check.recordDef(name, v)
 		enum.variants = append(enum.variants, v)
 	}
@@ -176,26 +210,58 @@ func (check *Checker) enumType(e *ast.EnumType, def *TypeName) Type {
 	return NewStruct(fields, nil)
 }
 
-// enumStringMethod gives the enum type obj a String method (generated when
-// the code is lowered) unless it declares one.
-func (check *Checker) enumStringMethod(obj *TypeName) {
+// enumMethods gives the enum type obj the methods generated when the code
+// is lowered, unless it declares them: String, and for encoding,
+// MarshalText and UnmarshalText (an enum without values encodes as its
+// variant's name) or MarshalJSON and UnmarshalJSON (an enum with values
+// encodes as {"type": name, "value": value}).
+func (check *Checker) enumMethods(obj *TypeName) {
 	n := asNamed(obj.typ)
-	if n == nil || n.enum == nil || n.TypeParams().Len() > 0 {
-		// (Generic enums get a String method when lowered too, but the
-		// checker does not know it: receivers of generic types need type
-		// parameters of their own.)
-		if n != nil && n.enum != nil {
-			n.enumString = !hasMethod(n, "String")
+	if n == nil || n.enum == nil {
+		return
+	}
+	type method struct {
+		name    string
+		pointer bool
+		params  []Type
+		results []Type
+	}
+	bytes := NewSlice(Typ[Byte])
+	methods := []method{{"String", false, nil, []Type{Typ[String]}}}
+	if n.enum.HasValues() {
+		methods = append(methods,
+			method{"MarshalJSON", false, nil, []Type{bytes, universeError}},
+			method{"UnmarshalJSON", true, []Type{bytes}, []Type{universeError}})
+	} else {
+		methods = append(methods,
+			method{"MarshalText", false, nil, []Type{bytes, universeError}},
+			method{"UnmarshalText", true, []Type{bytes}, []Type{universeError}})
+	}
+	for _, m := range methods {
+		if hasMethod(n, m.name) {
+			continue
 		}
-		return
+		n.enumGen = append(n.enumGen, m.name)
+		if n.TypeParams().Len() > 0 {
+			// Generic enums get the methods when lowered too, but the
+			// checker does not know them: receivers of generic types
+			// need type parameters of their own.
+			continue
+		}
+		var rtype Type = n
+		if m.pointer {
+			rtype = NewPointer(n)
+		}
+		vars := func(types []Type, kind VarKind) *Tuple {
+			var vs []*Var
+			for _, t := range types {
+				vs = append(vs, newVar(kind, obj.pos, check.pkg, "", t))
+			}
+			return NewTuple(vs...)
+		}
+		sig := NewSignatureType(NewParam(obj.pos, check.pkg, "", rtype), nil, nil, vars(m.params, ParamVar), vars(m.results, ResultVar), false)
+		n.AddMethod(NewFunc(obj.pos, check.pkg, m.name, sig))
 	}
-	if hasMethod(n, "String") {
-		return
-	}
-	recv := NewParam(obj.pos, check.pkg, "", n)
-	sig := NewSignatureType(recv, nil, nil, nil, NewTuple(newVar(ResultVar, obj.pos, check.pkg, "", Typ[String])), false)
-	n.AddMethod(NewFunc(obj.pos, check.pkg, "String", sig))
-	n.enumString = true
 }
 
 func hasMethod(n *Named, name string) bool {
@@ -500,4 +566,22 @@ func (check *Checker) openBindings(cond ast.Expr, node ast.Node, end token.Pos) 
 	check.openScope(node, "is")
 	check.scope.end = end
 	return true
+}
+
+// variantTag returns the JSON name in a variant's tag (`json:"name"`).
+func (check *Checker) variantTag(tag *ast.BasicLit, names map[string]string) string {
+	s, err := strconv.Unquote(tag.Value)
+	if err != nil {
+		check.error(tag, InvalidSyntaxTree, "invalid tag")
+		return ""
+	}
+	name, opts, _ := strings.Cut(reflect.StructTag(s).Get("json"), ",")
+	switch {
+	case opts != "":
+		check.errorf(tag, NotAnExpr, "a variant's json tag can only rename it, not %q", ","+opts)
+	case name == "-":
+		check.error(tag, NotAnExpr, `json:"-" is not supported for variants`)
+		return ""
+	}
+	return name
 }

@@ -1,0 +1,21 @@
+"green" <nil>
+"Blue" <nil>
+{"type":"circle","value":1.5} <nil>
+{"type":"empty"} <nil>
+{"type":"Some","value":3} <nil>
+{"type":"None"} <nil>
+{"fill":"Blue","shapes":[{"type":"circle","value":1},{"type":"rect","value":{"w":2,"h":3}},{"type":"empty"}],"counts":{"green":2,"red":1},"label":{"type":"Some","value":"hi"},"opacity":50} <nil>
+<nil> Blue [Circle(1) Rect({2 3}) Empty] map[Red:1 Green:2] Some(hi) Just(50)
+Green <nil>
+Blue <nil>
+Red unknown Color variant "purple" (want "red", "green" or "Blue")
+Rect({4 5}) <nil>
+Empty <nil>
+Empty <nil>
+Empty unknown Shape variant "square" (want "empty", "circle" or "rect")
+Empty decoding Shape: variant "circle" needs a "value"
+Empty decoding Shape: missing "type"
+Empty decoding Shape "circle": json: cannot unmarshal string into Go value of type float64
+Empty decoding Shape: want an object like {"type": ...}, not "circle"
+Some(x) <nil>
+Green

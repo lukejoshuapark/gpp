@@ -158,7 +158,7 @@ func (check *Checker) objDecl(obj Object) {
 		// invalid recursive types are detected via path
 		check.typeDecl(obj, d.tdecl)
 		check.collectMethods(obj) // methods can only be added to top-level types
-		check.enumStringMethod(obj)
+		check.enumMethods(obj)
 	case *Func:
 		// functions may be recursive - no need to track dependencies
 		check.funcDecl(obj, d)

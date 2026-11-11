@@ -171,6 +171,11 @@ func (p *parser) parseEnumType() *ast.EnumType {
 			}
 			p.expect(token.RPAREN)
 		}
+		if p.tok == token.STRING {
+			// a tag, as on struct fields: `json:"name"`
+			f.Tag = &ast.BasicLit{ValuePos: p.pos, ValueEnd: p.end(), Kind: token.STRING, Value: p.lit}
+			p.next()
+		}
 		if p.tok == token.SEMICOLON || p.tok == token.RBRACE {
 			if p.tok == token.SEMICOLON {
 				p.next()

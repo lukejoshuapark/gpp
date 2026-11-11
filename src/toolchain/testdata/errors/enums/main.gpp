@@ -8,6 +8,14 @@ type Shape enum {
 
 type Color enum { Red; Green }
 
+type Tagged enum {
+	A `json:"a,omitempty"`
+	B `json:"-"`
+	C `json:"x"`
+	D `json:"x"`
+	E `json:"A"`
+}
+
 func (c Color) Red() {}
 
 type Option[T any] enum {

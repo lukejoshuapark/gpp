@@ -184,3 +184,45 @@ type Option[T any] enum {
   the same variants.
 - **Code outside the enum:** composite literals of an enum type are not
   allowed, and neither is reading its fields, which are internal.
+
+### Enums and JSON
+
+Enums encode to JSON (and text) by their variant names:
+
+- **An enum with no values** encodes as a string. It works as a map key, and
+  with anything that uses `encoding.TextMarshaler` (`flag.TextVar`, most YAML
+  and TOML libraries):
+
+  ```go
+  Color.Green                 // "Green"
+  map[Color]int{Color.Red: 1} // {"Red":1}
+  ```
+
+- **An enum where any variant has a value** encodes every variant as an
+  object, with the variant's name under `"type"` and its value, if it has
+  one, under `"value"`:
+
+  ```go
+  Shape.Circle(1.5)           // {"type":"Circle","value":1.5}
+  Shape.Empty                 // {"type":"Empty"}
+  ```
+
+- **Renaming a variant:** give it a tag, as on struct fields. The tag can
+  only rename; `String` keeps the Go name.
+
+  ```go
+  type Shape enum {
+  	Empty           `json:"empty"`
+  	Circle(float64) `json:"circle"`
+  }
+  ```
+
+- **Decoding:** unknown names, a missing `"type"` or a missing `"value"` are
+  errors that list what was expected. `null` leaves the value unchanged.
+  `omitzero` omits the first variant (`omitempty` never applies to enums).
+- **Mechanism:** the encoding comes from generated `MarshalText` and
+  `UnmarshalText` methods (enums without values) or `MarshalJSON` and
+  `UnmarshalJSON` methods (enums with values). Each is generated only if the
+  enum doesn't declare it. To encode differently, for example an `Option` as
+  `null` or the bare value, declare both `MarshalJSON` and `UnmarshalJSON`.
+

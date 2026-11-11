@@ -2105,12 +2105,16 @@ func (p *printer) ternaryBranch(opPos token.Pos, x ast.Expr, depth int) {
 // were on one line in the source.
 func (p *printer) enumVariants(fields *ast.FieldList) {
 	lbrace, rbrace, list := fields.Opening, fields.Closing, fields.List
-	variant := func(f *ast.Field) {
+	variant := func(f *ast.Field, sep whiteSpace) {
 		p.expr(f.Names[0])
 		if f.Type != nil {
 			p.print(token.LPAREN)
 			p.expr(f.Type)
 			p.print(token.RPAREN)
+		}
+		if f.Tag != nil {
+			p.print(sep)
+			p.expr(f.Tag)
 		}
 	}
 	oneLine := lbrace.IsValid() && rbrace.IsValid() && p.lineFor(lbrace) == p.lineFor(rbrace) && !p.commentBefore(p.posFor(rbrace))
@@ -2122,7 +2126,7 @@ func (p *printer) enumVariants(fields *ast.FieldList) {
 			if i > 0 {
 				p.print(token.SEMICOLON, blank)
 			}
-			variant(f)
+			variant(f, blank)
 		}
 		p.print(blank)
 		p.setPos(rbrace)
@@ -2139,7 +2143,7 @@ func (p *printer) enumVariants(fields *ast.FieldList) {
 		}
 		p.setComment(f.Doc)
 		p.recordLine(&line)
-		variant(f)
+		variant(f, vtab)
 		if f.Comment != nil {
 			p.print(vtab)
 			p.setComment(f.Comment)
