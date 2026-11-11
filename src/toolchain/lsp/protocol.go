@@ -230,6 +230,7 @@ type ServerCapabilities struct {
 	DefinitionProvider     bool                    `json:"definitionProvider"`
 	DocumentSymbolProvider bool                    `json:"documentSymbolProvider"`
 	FormattingProvider     bool                    `json:"documentFormattingProvider"`
+	SemanticTokensProvider *SemanticTokensOptions  `json:"semanticTokensProvider,omitempty"`
 }
 
 type DocumentFormattingParams struct {

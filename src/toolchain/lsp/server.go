@@ -144,6 +144,10 @@ func (s *server) dispatch(m *message) (result any, rerr *rpcError) {
 				DefinitionProvider:     true,
 				DocumentSymbolProvider: true,
 				FormattingProvider:     true,
+				SemanticTokensProvider: &SemanticTokensOptions{
+					Legend: SemanticTokensLegend{TokenTypes: semanticTokenTypes, TokenModifiers: semanticTokenModifiers},
+					Full:   true,
+				},
 			},
 			ServerInfo: ServerInfo{Name: "gpp", Version: "0.1.0"},
 		}, nil
@@ -233,6 +237,12 @@ func (s *server) dispatch(m *message) (result any, rerr *rpcError) {
 			return nil, e
 		}
 		return s.documentSymbols(p), nil
+	case "textDocument/semanticTokens/full":
+		var p SemanticTokensParams
+		if e := decode(&p); e != nil {
+			return nil, e
+		}
+		return s.semanticTokens(p), nil
 	case "textDocument/formatting":
 		var p DocumentFormattingParams
 		if e := decode(&p); e != nil {

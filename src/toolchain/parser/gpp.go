@@ -203,3 +203,16 @@ func (p *parser) parseIsExpr(x ast.Expr) ast.Expr {
 	pattern := p.parsePrimaryExpr(nil)
 	return &ast.IsExpr{X: x, Is: pos, Pattern: pattern}
 }
+
+// atErrorContext reports whether the token after a postfix ? starts an
+// error context: a string literal, an identifier (other than the is
+// operator) or func.
+func (p *parser) atErrorContext() bool {
+	switch p.tok {
+	case token.STRING, token.FUNC:
+		return true
+	case token.IDENT:
+		return !p.atIs()
+	}
+	return false
+}

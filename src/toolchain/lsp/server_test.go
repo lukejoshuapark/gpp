@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -411,5 +412,41 @@ func TestEnums(t *testing.T) {
 	c.call("textDocument/documentSymbol", DocumentSymbolParams{TextDocument: TextDocumentIdentifier{URI: uri}}, &syms)
 	if len(syms) < 1 || syms[0].Kind != SymbolEnum || len(syms[0].Children) != 2 || syms[0].Children[1].Name != "Circle" {
 		t.Errorf("symbols: %+v", syms)
+	}
+}
+
+func TestSemanticTokens(t *testing.T) {
+	src := "package main\n\nimport \"fmt\"\n\ntype Shape enum {\n\tEmpty\n\tCircle(float64)\n}\n\ntype Point struct{ X int }\n\nfunc (p Point) Get(n int) int => p.X + n\n\nconst limit = 3\n\nfunc main() {\n\ts := Shape.Circle(2)\n\tq := Point{X: limit}\n\tfmt.Println(s, q.Get(len(\"ab\")))\n}\n"
+	dir := workspace(t, map[string]string{"main.gpp": src})
+	c := startServer(t)
+	uri := c.open(filepath.Join(dir, "main.gpp"), src)
+	var toks SemanticTokens
+	c.call("textDocument/semanticTokens/full", SemanticTokensParams{TextDocument: TextDocumentIdentifier{URI: uri}}, &toks)
+	lines := strings.Split(src, "\n")
+	got := map[string]string{} // "line:text" -> type
+	line, char := 0, 0
+	for i := 0; i+4 < len(toks.Data)+1; i += 5 {
+		d := toks.Data[i : i+5]
+		if d[0] > 0 {
+			char = 0
+		}
+		line += int(d[0])
+		char += int(d[1])
+		text := lines[line][char : char+int(d[2])]
+		got[fmt.Sprintf("%d:%s", line+1, text)] = semanticTokenTypes[d[3]]
+	}
+	want := map[string]string{
+		"5:Shape": "type", "6:Empty": "enumMember", "7:float64": "type",
+		"10:Point": "type", "10:X": "property",
+		"12:p": "parameter", "12:Point": "type", "12:Get": "method", "12:n": "parameter",
+		"14:limit": "variable",
+		"17:s":     "variable", "17:Shape": "type", "17:Circle": "enumMember",
+		"18:Point": "type", "18:X": "property", "18:limit": "variable",
+		"19:fmt": "namespace", "19:Println": "function", "19:len": "function",
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s: got %q, want %q", k, got[k], v)
+		}
 	}
 }

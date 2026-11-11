@@ -1,0 +1,96 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"strconv"
+)
+
+var ErrBadPort = errors.New("bad port")
+
+type ParseError struct {
+	Line int
+	Err  error
+}
+
+func (e *ParseError) Error() string => fmt.Sprintf("line %d: %v", e.Line, e.Err)
+func (e *ParseError) Unwrap() error => e.Err
+
+// a constant message: ": %w" is added
+func port(s string) (int, error) => strconv.Atoi(s)? "parsing port", nil
+
+// a dynamic message, built with +
+func portOf(name, s string) (int, error) => strconv.Atoi(s)? "parsing port of " + name, nil
+
+// a format of its own, with %w where the cause goes
+func portFormat(s string) (int, error) => strconv.Atoi(s)? "%w (while parsing a port)", nil
+
+// a sentinel error: both it and the cause match errors.Is
+func portSentinel(s string) (int, error) => strconv.Atoi(s)? ErrBadPort, nil
+
+// a function making the error: a lambda, typed from the context
+func portLine(line int, s string) (int, error) {
+	n := strconv.Atoi(s)? err => &ParseError{Line: line, Err: err}
+	return n, nil
+}
+
+// the context is only evaluated on failure
+var built int
+
+func describe(s string) string {
+	built++
+	return s
+}
+
+func lazy(s string) (int, error) => strconv.Atoi(s)? describe("parsing " + s), nil
+
+// ? followed by an operator works on the result
+func big(s string) (bool, error) => strconv.Atoi(s)? > 10 && !strconv.ParseBool("false")?, nil
+
+// statements and multiple results
+func check(ok bool) error {
+	if !ok {
+		return errors.New("not ok")
+	}
+	return nil
+}
+
+func run() error {
+	check(true)? "first check"
+	check(false)? "second check"
+	return nil
+}
+
+func main() {
+	fmt.Println(port("80"))
+	fmt.Println(port("x"))
+	fmt.Println(portOf("web", "y"))
+	fmt.Println(portFormat("z"))
+
+	_, err := portSentinel("q")
+	fmt.Println(err)
+	var numErr *strconv.NumError
+	fmt.Println(errors.Is(err, ErrBadPort), errors.As(err, &numErr))
+
+	_, err = portLine(7, "w")
+	var perr *ParseError
+	fmt.Println(err, errors.As(err, &perr), perr.Line)
+
+	lazy("1")
+	lazy("2")
+	fmt.Println("built:", built)
+	_, err = lazy("v")
+	fmt.Println(err, "built:", built)
+
+	fmt.Println(run())
+
+	// ? followed by its own ":" (a map key) is just ?
+	fill := func(k string) (map[int]string, error) {
+		return map[int]string{strconv.Atoi(k)?: "v"}, nil
+	}
+	fmt.Println(big("11"))
+	fmt.Println(fill("3"))
+	_, err = os.Open("/nope")
+	fmt.Println(err != nil)
+}

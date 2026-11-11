@@ -1762,8 +1762,14 @@ func (p *parser) parsePrimaryExpr(x ast.Expr) ast.Expr {
 			x = p.parseCallOrConversion(x)
 		case lexer.TRY:
 			// G++: postfix error propagation
-			x = &ast.TryExpr{X: x, Question: p.pos}
+			t := &ast.TryExpr{X: x, Question: p.pos}
 			p.next()
+			if p.atErrorContext() {
+				// G++: x? context. An operand can never follow an operand
+				// in Go, so a string, name or func here starts a context.
+				t.Context = p.parseExpr()
+			}
+			x = t
 		case token.LBRACE:
 			// operand may have returned a parenthesized complit
 			// type; accept it but complain if we have a complit

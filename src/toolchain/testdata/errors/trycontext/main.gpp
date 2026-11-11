@@ -1,0 +1,20 @@
+package main
+
+import "strconv"
+
+func bad(s string) (int, error) {
+	limit := 42
+	a := strconv.Atoi(s)? limit
+	b := strconv.Atoi(s)? nil
+	c := strconv.Atoi(s)? "reading %s: %w"
+	d := strconv.Atoi(s)? "%w and %w"
+	e := strconv.Atoi(s)? err => err.Error()
+	f := strconv.Atoi(s)? func(x int) int { return x }
+	return a + b + c + d + e + f, nil
+}
+
+func noError(s string) int {
+	return strconv.Atoi(s)? "parsing"
+}
+
+func main() {}

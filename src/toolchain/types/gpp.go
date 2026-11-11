@@ -7,7 +7,9 @@
 package types
 
 import (
+	"go/constant"
 	"go/token"
+	"strings"
 
 	"gpp/ast"
 	. "gpp/internal/typeerrors"
@@ -152,6 +154,10 @@ func (check *Checker) try(x *operand, e *ast.TryExpr) {
 		check.error(atPos(e.Question), InvalidCall, "? can only be used in a function whose last result is an error")
 		x.invalidate()
 		return
+	}
+
+	if e.Context != nil {
+		check.errorContext(e.Context)
 	}
 
 	rest := results[:len(results)-1]
@@ -472,4 +478,87 @@ func (err Error) Span() (start, end token.Pos) {
 		end = start
 	}
 	return
+}
+
+// An ErrorContext is the kind of context given after ? (see ErrorContextOf).
+type ErrorContext int
+
+const (
+	ContextNone    ErrorContext = iota
+	ContextMessage              // a string: fmt.Errorf("%s: %w", msg, err)
+	ContextFormat               // a constant string with %w: fmt.Errorf(format, err)
+	ContextError                // an error: fmt.Errorf("%w: %w", context, err)
+	ContextFunc                 // a func(error) error: context(err)
+)
+
+// ErrorContextOf returns the kind of the context expression after ? with the
+// given (recorded) type and value.
+func ErrorContextOf(tv TypeAndValue) ErrorContext {
+	switch {
+	case tv.Type == nil:
+		return ContextNone
+	case allString(tv.Type):
+		if tv.Value != nil && tv.Value.Kind() == constant.String && strings.Contains(constant.StringVal(tv.Value), "%w") {
+			return ContextFormat
+		}
+		return ContextMessage
+	}
+	if _, ok := tv.Type.Underlying().(*Signature); ok {
+		return ContextFunc
+	}
+	return ContextError
+}
+
+// errorContext checks the context of x? context, which is evaluated only
+// if x fails: a message, an error to wrap the failure in, or a function
+// making the error to return.
+func (check *Checker) errorContext(e ast.Expr) {
+	handler := NewSignatureType(nil, nil, nil,
+		NewTuple(NewParam(e.Pos(), nil, "err", universeError)),
+		NewTuple(newVar(ResultVar, e.Pos(), nil, "", universeError)), false)
+	var c operand
+	check.rawExpr(&target{sig: handler, desc: "error context"}, &c, e, nil, false)
+	check.exclude(&c, 1<<novalue|1<<builtin|1<<typexpr)
+	check.singleValue(&c)
+	if !c.isValid() {
+		return
+	}
+	switch {
+	case allString(c.typ()):
+		if c.mode() == constant_ {
+			if f := constant.StringVal(c.val); strings.Contains(f, "%w") {
+				if verbs := formatVerbs(f); len(verbs) != 1 || verbs[0] != 'w' {
+					check.errorf(&c, InvalidCall, "an error context format uses %%w once and no other verbs (add values with +, as in \"reading \" + path)")
+				}
+			}
+		}
+		if isUntyped(c.typ()) {
+			check.assignment(&c, nil, "error context")
+		}
+	case c.isNil():
+		check.error(&c, UntypedNilUse, "use of untyped nil as error context")
+	case check.implementsError(c.typ()):
+	default:
+		if ok, _ := c.assignableTo(check, handler, nil); !ok {
+			check.errorf(&c, IncompatibleAssign, "the error context after ? must be a string, an error, or a func(error) error, not %s", c.typ())
+		}
+	}
+}
+
+// formatVerbs returns the verbs of a fmt format string.
+func formatVerbs(f string) []rune {
+	var verbs []rune
+	for i := 0; i < len(f); i++ {
+		if f[i] != '%' {
+			continue
+		}
+		i++
+		for i < len(f) && strings.ContainsRune("+-# 0123456789.*[]", rune(f[i])) {
+			i++
+		}
+		if i < len(f) && f[i] != '%' {
+			verbs = append(verbs, rune(f[i]))
+		}
+	}
+	return verbs
 }

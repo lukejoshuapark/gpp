@@ -88,7 +88,7 @@
               "name": "storage.type.gpp"
             },
             "2": {
-              "name": "entity.name.type.enum.gpp"
+              "name": "entity.name.type.gpp"
             },
             "3": {
               "patterns": [
@@ -235,7 +235,7 @@
     "lambda": {
       "patterns": [
         {
-          "match": "(?<=[(,=:{]|[(,=:{]\\s|return\\s)([_\\p{L}][_\\p{L}\\p{N}]*)\\s*(=>)",
+          "match": "(?<=[(,=:{]|[(,=:{?]\\s|return\\s)([_\\p{L}][_\\p{L}\\p{N}]*)\\s*(=>)",
           "captures": {
             "1": {
               "name": "variable.parameter.gpp"
@@ -386,7 +386,7 @@
     "operators-is": {
       "patterns": [
         {
-          "name": "keyword.operator.is.gpp",
+          "name": "keyword.operator.expression.is.gpp",
           "match": "(?<=[\\w)\\]]\\s)is(?=\\s+[_\\p{L}])"
         }
       ]

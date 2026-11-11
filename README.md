@@ -98,6 +98,8 @@ edited package and its dependents are checked again.
 `src/vscode` is the VS Code extension: a TextMate grammar, plus a client for
 `gpp lsp` that provides:
 
+- semantic highlighting: names coloured by what they denote (types,
+  functions, parameters, enum variants, ...);
 - errors as you type;
 - completion: members, names in scope, and packages not imported yet, which
   are added to the imports when accepted;

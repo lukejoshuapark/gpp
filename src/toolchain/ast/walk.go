@@ -80,6 +80,9 @@ func Walk(v Visitor, node Node) {
 
 	case *TryExpr:
 		Walk(v, n.X)
+		if n.Context != nil {
+			Walk(v, n.Context)
+		}
 
 	case *IsExpr:
 		Walk(v, n.X)

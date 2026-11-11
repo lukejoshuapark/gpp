@@ -909,6 +909,10 @@ func (p *printer) expr1(expr ast.Expr, prec1, depth int) {
 		p.expr1(x.X, token.HighestPrec, depth)
 		p.setPos(x.Question)
 		p.print(lexer.TRY)
+		if x.Context != nil {
+			p.print(blank)
+			p.expr0(x.Context, depth)
+		}
 
 	case *ast.LambdaExpr:
 		startCol := p.out.Column

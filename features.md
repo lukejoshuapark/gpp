@@ -50,6 +50,34 @@ func parsePoint(s string) (Point, error) {
   before `b`.
 - In a lambda or function literal, `?` returns from that function.
 
+### Adding context
+
+Anything written straight after the `?` adds context to the error. What
+happens depends on the context's type:
+
+```go
+n := strconv.Atoi(s)? "parsing port"            // parsing port: strconv.Atoi: ...
+n := strconv.Atoi(s)? "parsing port of " + name // build messages with +
+n := strconv.Atoi(s)? "%w (while parsing)"      // %w places the cause yourself
+n := strconv.Atoi(s)? ErrBadPort                // errors.Is matches both
+n := strconv.Atoi(s)? err => &ParseError{Line: line, Err: err}
+```
+
+| Context | Returns |
+|---|---|
+| a string | `fmt.Errorf("<message>: %w", err)` |
+| a constant string containing `%w` | `fmt.Errorf(<format>, err)`; it must have no other verbs |
+| an `error` | `fmt.Errorf("%w: %w", <error>, err)` |
+| a `func(error) error` (a lambda gets its type from this) | `<func>(err)` |
+
+- The context must start with a string literal, a name or `func`. In Go,
+  nothing else can follow an operand, so this never changes the meaning of
+  other code. Anything else after `?` still applies to the result:
+  `f()? > 10`, `f()?.Name`, `{k()?: v}`.
+- The context is only evaluated when there is an error.
+- It extends to the end of the expression (up to a `,`, `)`, `}`, `:` or the
+  end of the statement), and must start on the same line as the `?`.
+
 ## Lambdas
 
 Short function literals whose parameter types come from the context:

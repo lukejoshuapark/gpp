@@ -21,6 +21,10 @@ func TestGppSyntax(t *testing.T) {
 			"package p\nvar f = (a,b int)=>a+b\nvar g = x=>{\nreturn x\n}\nvar h = ()=>42\n",
 			"package p\n\nvar f = (a, b int) => a + b\nvar g = x => {\n\treturn x\n}\nvar h = () => 42\n",
 		},
+		{
+			"package p\nvar a = f()?   \"loading\"\nvar b = map[int]int{k()?: 1}\nvar c = xs[lo()?:]\nvar d = g()?  err=>err\n",
+			"package p\n\nvar a = f()? \"loading\"\nvar b = map[int]int{k()?: 1}\nvar c = xs[lo()?:]\nvar d = g()? err => err\n",
+		},
 	}
 	for _, tt := range tests {
 		got, err := Source([]byte(tt.in))

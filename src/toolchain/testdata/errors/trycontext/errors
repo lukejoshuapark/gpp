@@ -1,0 +1,7 @@
+main.gpp:7:24: the error context after ? must be a string, an error, or a func(error) error, not int
+main.gpp:8:24: use of untyped nil as error context
+main.gpp:9:24: an error context format uses %w once and no other verbs (add values with +, as in "reading " + path)
+main.gpp:10:24: an error context format uses %w once and no other verbs (add values with +, as in "reading " + path)
+main.gpp:11:31: cannot use err.Error() (value of type string) as error value in return statement: string does not implement error (missing method Error)
+main.gpp:12:24: the error context after ? must be a string, an error, or a func(error) error, not func(x int) int
+main.gpp:17:24: ? can only be used in a function whose last result is an error

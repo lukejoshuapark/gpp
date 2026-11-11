@@ -44,6 +44,10 @@ func WriteExpr(buf *bytes.Buffer, x ast.Expr) {
 	case *ast.TryExpr:
 		WriteExpr(buf, x.X)
 		buf.WriteByte('?')
+		if x.Context != nil {
+			buf.WriteByte(' ')
+			WriteExpr(buf, x.Context)
+		}
 
 	case *ast.IsExpr:
 		WriteExpr(buf, x.X)

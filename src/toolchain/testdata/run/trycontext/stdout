@@ -1,0 +1,13 @@
+80 <nil>
+0 parsing port: strconv.Atoi: parsing "x": invalid syntax
+0 parsing port of web: strconv.Atoi: parsing "y": invalid syntax
+0 strconv.Atoi: parsing "z": invalid syntax (while parsing a port)
+bad port: strconv.Atoi: parsing "q": invalid syntax
+true true
+line 7: strconv.Atoi: parsing "w": invalid syntax true 7
+built: 0
+parsing v: strconv.Atoi: parsing "v": invalid syntax built: 1
+second check: not ok
+true <nil>
+map[3:v] <nil>
+true

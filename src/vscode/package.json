@@ -43,7 +43,8 @@
       "[gpp]": {
         "editor.insertSpaces": false,
         "editor.tabSize": 4,
-        "editor.formatOnSave": true
+        "editor.formatOnSave": true,
+        "editor.semanticHighlighting.enabled": true
       }
     },
     "configuration": {

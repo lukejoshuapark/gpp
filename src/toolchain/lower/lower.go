@@ -19,6 +19,7 @@ package lower
 import (
 	"bytes"
 	"fmt"
+	"go/constant"
 	"go/token"
 	"path/filepath"
 	"slices"
@@ -672,11 +673,17 @@ func (l *lowerer) try(x *ast.TryExpr, pre *[]ast.Stmt, discard bool) ast.Expr {
 			results = append(results, l.zero(res.At(i).Type(), pos))
 		}
 	}
-	results = append(results, ident(errv))
+	// The error context is only evaluated on failure, in the if body.
+	var errResult ast.Expr = ident(errv)
+	var ctxPre []ast.Stmt
+	if x.Context != nil {
+		errResult = l.wrapError(x.Context, l.expr(x.Context, &ctxPre), ident(errv))
+	}
+	results = append(results, errResult)
 	*pre = append(*pre, &ast.IfStmt{
 		If:   pos,
 		Cond: &ast.BinaryExpr{X: ident(errv), OpPos: pos, Op: token.NEQ, Y: &ast.Ident{NamePos: pos, Name: "nil"}},
-		Body: &ast.BlockStmt{Lbrace: pos, List: []ast.Stmt{&ast.ReturnStmt{Return: pos, Results: results}}, Rbrace: pos},
+		Body: &ast.BlockStmt{Lbrace: pos, List: append(ctxPre, &ast.ReturnStmt{Return: pos, Results: results}), Rbrace: pos},
 	})
 
 	switch len(vals) {
@@ -1005,4 +1012,35 @@ func define(lhs, rhs []ast.Expr) *ast.AssignStmt {
 
 func assign(lhs, rhs []ast.Expr) *ast.AssignStmt {
 	return &ast.AssignStmt{Lhs: lhs, TokPos: rhs[0].Pos(), Tok: token.ASSIGN, Rhs: rhs}
+}
+
+// wrapError returns the error to return for x? context, where ctx is the
+// lowered context expression orig.
+func (l *lowerer) wrapError(orig, ctx, err ast.Expr) ast.Expr {
+	pos := orig.Pos()
+	str := func(s string) ast.Expr {
+		return &ast.BasicLit{ValuePos: pos, Kind: token.STRING, Value: strconv.Quote(s)}
+	}
+	errorf := func(args ...ast.Expr) ast.Expr {
+		fun := &ast.SelectorExpr{X: &ast.Ident{NamePos: pos, Name: l.importName("fmt")}, Sel: &ast.Ident{NamePos: pos, Name: "Errorf"}}
+		return &ast.CallExpr{Fun: fun, Lparen: pos, Args: args, Rparen: pos}
+	}
+	tv := l.info.Types[orig]
+	switch types.ErrorContextOf(tv) {
+	case types.ContextMessage:
+		if tv.Value != nil && tv.Value.Kind() == constant.String {
+			if msg := constant.StringVal(tv.Value); !strings.Contains(msg, "%") {
+				return errorf(str(msg+": %w"), err)
+			}
+		}
+		return errorf(str("%s: %w"), ctx, err)
+	case types.ContextFormat:
+		return errorf(ctx, err)
+	case types.ContextError:
+		return errorf(str("%w: %w"), ctx, err)
+	case types.ContextFunc:
+		return &ast.CallExpr{Fun: primary(ctx), Lparen: pos, Args: []ast.Expr{err}, Rparen: pos}
+	}
+	l.errorf(pos, "internal error: error context without type")
+	return err
 }

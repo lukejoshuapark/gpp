@@ -336,6 +336,7 @@ type (
 	TryExpr struct {
 		X        Expr      // operand
 		Question token.Pos // position of "?"
+		Context  Expr      // G++: context after "?" (string, error or func(error) error), or nil
 	}
 
 	// A LambdaExpr node represents a G++ lambda: x => e, (x, y) => e,
@@ -600,9 +601,14 @@ func (x *BasicLit) End() token.Pos {
 }
 func (x *FuncLit) End() token.Pos     { return x.Body.End() }
 func (x *TernaryExpr) End() token.Pos { return x.Y.End() }
-func (x *TryExpr) End() token.Pos     { return x.Question + 1 }
-func (x *EnumType) End() token.Pos    { return x.Variants.End() }
-func (x *IsExpr) End() token.Pos      { return x.Pattern.End() }
+func (x *TryExpr) End() token.Pos {
+	if x.Context != nil {
+		return x.Context.End()
+	}
+	return x.Question + 1
+}
+func (x *EnumType) End() token.Pos { return x.Variants.End() }
+func (x *IsExpr) End() token.Pos   { return x.Pattern.End() }
 func (x *LambdaExpr) End() token.Pos {
 	if x.Block != nil {
 		return x.Block.End()
