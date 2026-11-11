@@ -183,6 +183,7 @@ type CodeActionParams struct {
 
 type CodeActionContext struct {
 	Diagnostics []Diagnostic `json:"diagnostics"`
+	Only        []string     `json:"only,omitempty"`
 }
 
 type CodeAction struct {
@@ -226,11 +227,13 @@ type ServerCapabilities struct {
 	HoverProvider          bool                    `json:"hoverProvider"`
 	CompletionProvider     *CompletionOptions      `json:"completionProvider,omitempty"`
 	SignatureHelpProvider  *SignatureHelpOptions   `json:"signatureHelpProvider,omitempty"`
-	CodeActionProvider     bool                    `json:"codeActionProvider"`
+	CodeActionProvider     *CodeActionOptions      `json:"codeActionProvider,omitempty"`
 	DefinitionProvider     bool                    `json:"definitionProvider"`
 	DocumentSymbolProvider bool                    `json:"documentSymbolProvider"`
 	FormattingProvider     bool                    `json:"documentFormattingProvider"`
 	SemanticTokensProvider *SemanticTokensOptions  `json:"semanticTokensProvider,omitempty"`
+	ReferencesProvider     bool                    `json:"referencesProvider"`
+	RenameProvider         *RenameOptions          `json:"renameProvider,omitempty"`
 }
 
 type DocumentFormattingParams struct {
@@ -264,4 +267,8 @@ func (d *CompletionItemLabelDetails) description() string {
 		return ""
 	}
 	return d.Description
+}
+
+type CodeActionOptions struct {
+	CodeActionKinds []string `json:"codeActionKinds"`
 }

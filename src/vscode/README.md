@@ -3,8 +3,30 @@
 Support for `.gpp` files: highlighting, errors as you type, completion
 (members, names in scope, and packages that are not imported yet, which are
 imported when you accept them), hover with documentation, go to definition,
-signature help, formatting (on save by default), quick fixes for missing
-imports, and the outline view.
+find references, rename, signature help, formatting and organizing imports
+(both on save by default), quick fixes for missing imports, debugging, and
+the outline view.
+
+## Debugging
+
+Debugging needs the Go extension (`golang.go`) and Delve (`dlv`). Press F5
+in a `.gpp` file to debug its package, or add a launch configuration:
+
+```json
+{
+  "type": "gpp",
+  "request": "launch",
+  "name": "Debug G++ program",
+  "program": "${workspaceFolder}",
+  "args": [],
+  "buildFlags": []
+}
+```
+
+The extension builds the program with `gpp build` (optimizations off) and
+debugs the binary with the Go extension. Breakpoints, stepping and stack
+traces use the `.gpp` sources. Enum values show their internal fields
+(`GPP_tag`, ...).
 
 Highlighting and bracket/comment handling are declarative (`syntaxes/`,
 `language-configuration.json`). Everything else comes from the G++ language

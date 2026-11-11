@@ -30,6 +30,7 @@ const (
 	codeMethodNotFound = -32601
 	codeInvalidParams  = -32602
 	codeInternalError  = -32603
+	codeRequestFailed  = -32803
 )
 
 // conn reads and writes LSP base-protocol messages: a Content-Length header,

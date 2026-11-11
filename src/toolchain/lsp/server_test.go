@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -124,6 +125,9 @@ func mustJSON(v any) []byte {
 
 // workspace writes a module with the given files and returns its directory.
 func workspace(t *testing.T, files map[string]string) string {
+	if _, ok := files["util/util.go"]; !ok {
+		files["util/util.go"] = "package util\n\nconst X = 1\n"
+	}
 	dir := t.TempDir()
 	if _, ok := files["go.mod"]; !ok {
 		files["go.mod"] = "module example.com/ws\n\ngo 1.27\n"
@@ -341,7 +345,7 @@ func TestImportQuickFix(t *testing.T) {
 		t.Fatalf("got %+v", d)
 	}
 	var actions []CodeAction
-	c.call("textDocument/codeAction", CodeActionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Range: d[0].Range, Context: CodeActionContext{Diagnostics: d}}, &actions)
+	c.call("textDocument/codeAction", CodeActionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Range: d[0].Range, Context: CodeActionContext{Diagnostics: d, Only: []string{"quickfix"}}}, &actions)
 	if len(actions) == 0 || actions[0].Title != `Add import "strings"` {
 		t.Fatalf("got %+v", actions)
 	}
@@ -452,6 +456,201 @@ func TestSemanticTokens(t *testing.T) {
 	for k, v := range want {
 		if got[k] != v {
 			t.Errorf("%s: got %q, want %q", k, got[k], v)
+		}
+	}
+}
+
+func organize(t *testing.T, src string) string {
+	t.Helper()
+	dir := workspace(t, map[string]string{"main.gpp": src})
+	c := startServer(t)
+	uri := c.open(filepath.Join(dir, "main.gpp"), src)
+	var actions []CodeAction
+	c.call("textDocument/codeAction", CodeActionParams{TextDocument: TextDocumentIdentifier{URI: uri}, Context: CodeActionContext{Only: []string{"source.organizeImports"}}}, &actions)
+	if len(actions) == 0 {
+		return src
+	}
+	edits := actions[0].Edit.Changes[uri]
+	if len(edits) != 1 {
+		t.Fatalf("edits: %+v", edits)
+	}
+	e := edits[0]
+	start, end := offsetOf([]byte(src), e.Range.Start), offsetOf([]byte(src), e.Range.End)
+	return src[:start] + e.NewText + src[end:]
+}
+
+func TestOrganizeImports(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{ // remove unused, add missing (choosing math/rand for Intn)
+			"package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\nfunc main() {\n\tfmt.Println(strings.ToUpper(\"x\"), rand.Intn(3))\n}\n",
+			"package main\n\nimport (\n\t\"fmt\"\n\t\"math/rand\"\n\t\"strings\"\n)\n\nfunc main() {\n\tfmt.Println(strings.ToUpper(\"x\"), rand.Intn(3))\n}\n",
+		},
+		{ // crypto/rand for Reader
+			"package main\n\nfunc main() {\n\t_ = rand.Reader\n}\n",
+			"package main\n\nimport \"crypto/rand\"\n\nfunc main() {\n\t_ = rand.Reader\n}\n",
+		},
+		{ // a single import becomes unused: the declaration goes
+			"package main\n\nimport \"os\"\n\nfunc main() {}\n",
+			"package main\n\nfunc main() {}\n",
+		},
+		{ // nothing to do
+			"package main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println() }\n",
+			"package main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println() }\n",
+		},
+		{ // groups: the standard library goes in the first group
+			"package main\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/ws/util\"\n)\n\nfunc main() {\n\tfmt.Println(util.X, strconv.Itoa(1))\n}\n",
+			"package main\n\nimport (\n\t\"fmt\"\n\t\"strconv\"\n\n\t\"example.com/ws/util\"\n)\n\nfunc main() {\n\tfmt.Println(util.X, strconv.Itoa(1))\n}\n",
+		},
+	}
+	for _, tt := range tests {
+		if got := organize(t, tt.in); got != tt.want {
+			t.Errorf("organizing:\n%s\ngot:\n%s\nwant:\n%s", tt.in, got, tt.want)
+		}
+	}
+}
+
+const renameMain = `package main
+
+import (
+	"fmt"
+
+	"example.com/ws/geo"
+)
+
+func main() {
+	total := 0
+	s := geo.Shape.Circle(2)
+	if s is geo.Shape.Circle(r) && r > 1 {
+		total += int(r)
+	}
+	add := (n int) => total + n
+	fmt.Println(geo.Area(s), add(total), geo.Origin.X)
+}
+`
+
+const renameGeo = `package geo
+
+type Shape enum {
+	Empty
+	Circle(float64)
+}
+
+type Point struct{ X, Y int }
+
+var Origin = Point{X: 0}
+
+func Area(s Shape) float64 {
+	switch s {
+	case Shape.Circle(r):
+		return 3 * r * r
+	case Shape.Empty:
+		return 0
+	}
+}
+
+func helper() int { return 1 }
+
+var _ = helper()
+`
+
+func applyEdits(t *testing.T, texts map[string]string, edit WorkspaceEdit) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for uri, edits := range edit.Changes {
+		path := uriToPath(uri)
+		text := texts[path]
+		slices.SortFunc(edits, func(a, b TextEdit) int {
+			return offsetOf([]byte(text), b.Range.Start) - offsetOf([]byte(text), a.Range.Start)
+		})
+		for _, e := range edits {
+			s, en := offsetOf([]byte(text), e.Range.Start), offsetOf([]byte(text), e.Range.End)
+			text = text[:s] + e.NewText + text[en:]
+		}
+		out[path] = text
+	}
+	return out
+}
+
+func TestReferencesAndRename(t *testing.T) {
+	dir := workspace(t, map[string]string{"main.gpp": renameMain, "geo/geo.gpp": renameGeo})
+	c := startServer(t)
+	mainPath, geoPath := filepath.Join(dir, "main.gpp"), filepath.Join(dir, "geo/geo.gpp")
+	uri := c.open(mainPath, renameMain)
+	texts := map[string]string{mainPath: renameMain, geoPath: renameGeo}
+
+	refs := func(marker string, offset int) []Location {
+		var locs []Location
+		p := ReferenceParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: at(t, renameMain, marker, offset)}
+		p.Context.IncludeDeclaration = true
+		c.call("textDocument/references", p, &locs)
+		return locs
+	}
+	// a variant: its declaration, construction and patterns, across packages
+	if locs := refs("Circle(2)", 0); len(locs) != 4 {
+		t.Errorf("Circle references: %+v", locs)
+	}
+	if locs := refs("total := 0", 0); len(locs) != 4 {
+		t.Errorf("total references: %+v", locs)
+	}
+
+	rename := func(marker string, offset int, name string) (map[string]string, string) {
+		var edit WorkspaceEdit
+		m := mustJSON(RenameParams{TextDocument: TextDocumentIdentifier{URI: uri}, Position: at(t, renameMain, marker, offset), NewName: name})
+		var p RenameParams
+		json.Unmarshal(m, &p)
+		c.nextID++
+		id := json.RawMessage(mustJSON(c.nextID))
+		c.conn.write(&message{ID: &id, Method: "textDocument/rename", Params: m})
+		for {
+			msg := c.next()
+			if msg.ID == nil || string(*msg.ID) != string(id) {
+				continue
+			}
+			if msg.Error != nil {
+				return nil, msg.Error.Message
+			}
+			b, _ := json.Marshal(msg.Result)
+			json.Unmarshal(b, &edit)
+			return applyEdits(t, texts, edit), ""
+		}
+	}
+
+	got, errMsg := rename("Circle(2)", 0, "Round")
+	if errMsg != "" || !strings.Contains(got[mainPath], "geo.Shape.Round(2)") || !strings.Contains(got[mainPath], "s is geo.Shape.Round(r)") ||
+		!strings.Contains(got[geoPath], "\tRound(float64)") || !strings.Contains(got[geoPath], "case Shape.Round(r):") {
+		t.Errorf("variant rename (%s):\n%s\n%s", errMsg, got[mainPath], got[geoPath])
+	}
+	got, errMsg = rename("r > 1", 0, "radius")
+	if errMsg != "" || !strings.Contains(got[mainPath], "Circle(radius) && radius > 1 {\n\t\ttotal += int(radius)") {
+		t.Errorf("binding rename (%s):\n%s", errMsg, got[mainPath])
+	}
+	got, errMsg = rename("(n int)", 1, "m")
+	if errMsg != "" || !strings.Contains(got[mainPath], "(m int) => total + m") {
+		t.Errorf("lambda parameter rename (%s):\n%s", errMsg, got[mainPath])
+	}
+	got, errMsg = rename("Origin.X", 7, "Left")
+	if errMsg != "" || !strings.Contains(got[geoPath], "struct{ Left, Y int }") || !strings.Contains(got[geoPath], "Point{Left: 0}") || !strings.Contains(got[mainPath], "geo.Origin.Left") {
+		t.Errorf("field rename (%s):\n%s\n%s", errMsg, got[mainPath], got[geoPath])
+	}
+
+	// refusals
+	for _, tt := range []struct {
+		marker string
+		offset int
+		name   string
+		want   string
+	}{
+		{"total := 0", 0, "s", "already declared"},         // same scope
+		{"total := 0", 0, "r", "would make"},               // hidden by the binding r
+		{"total := 0", 0, "fmt", "refer to"},               // would hide the import fmt
+		{"Origin.X", 7, "Y", "already has"},                // field clash
+		{"Circle(2)", 0, "Empty", "already has a variant"}, // variant clash
+		{"geo.Area", 4, "area", "must stay exported"},      // used from main
+		{"fmt.Println", 4, "Print", "outside this module"},
+		{"total := 0", 0, "1x", "not a valid name"},
+	} {
+		if _, errMsg := rename(tt.marker, tt.offset, tt.name); !strings.Contains(errMsg, tt.want) {
+			t.Errorf("renaming at %q to %s: error %q, want %q", tt.marker, tt.name, errMsg, tt.want)
 		}
 	}
 }

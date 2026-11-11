@@ -68,6 +68,29 @@ func (s *server) codeActions(p CodeActionParams) []CodeAction {
 	if fi == nil {
 		return actions
 	}
+	wants := func(kind string) bool {
+		if len(p.Context.Only) == 0 {
+			return true
+		}
+		for _, k := range p.Context.Only {
+			if kind == k || strings.HasPrefix(kind, k+".") {
+				return true
+			}
+		}
+		return false
+	}
+	if wants("source.organizeImports") {
+		if edits := s.organizeImports(snap, fi, text); len(edits) > 0 {
+			actions = append(actions, CodeAction{
+				Title: "Organize imports",
+				Kind:  "source.organizeImports",
+				Edit:  &WorkspaceEdit{Changes: map[string][]TextEdit{p.TextDocument.URI: edits}},
+			})
+		}
+	}
+	if !wants("quickfix") {
+		return actions
+	}
 	for _, d := range p.Context.Diagnostics {
 		name, ok := strings.CutPrefix(d.Message, "undefined: ")
 		if !ok || strings.Contains(name, ".") {

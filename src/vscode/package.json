@@ -1,7 +1,7 @@
 {
   "name": "gpp",
   "displayName": "G++",
-  "description": "G++ language support: highlighting, errors as you type, completion with auto-import, hover, go to definition, signature help, formatting and outline.",
+  "description": "G++ language support: highlighting, errors as you type, completion with auto-import, organize imports, hover, go to definition, find references, rename, signature help, formatting, debugging and outline.",
   "version": "0.1.0",
   "publisher": "gpp-lang",
   "icon": "images/icon.png",
@@ -44,7 +44,10 @@
         "editor.insertSpaces": false,
         "editor.tabSize": 4,
         "editor.formatOnSave": true,
-        "editor.semanticHighlighting.enabled": true
+        "editor.semanticHighlighting.enabled": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        }
       }
     },
     "configuration": {
@@ -61,6 +64,76 @@
       {
         "command": "gpp.restartServer",
         "title": "G++: Restart Language Server"
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "gpp"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "gpp",
+        "label": "G++",
+        "languages": [
+          "gpp"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "The package to debug: a directory (or .gpp file). Built with `gpp build` with optimizations off.",
+                "default": "${workspaceFolder}"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Command-line arguments for the program.",
+                "default": []
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory of the program (default: the package directory)."
+              },
+              "env": {
+                "type": "object",
+                "description": "Environment variables for the program.",
+                "default": {}
+              },
+              "buildFlags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Extra flags for gpp build, e.g. [\"-tags=dev\"].",
+                "default": []
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "gpp",
+            "request": "launch",
+            "name": "Debug G++ program",
+            "program": "${workspaceFolder}"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "G++: Launch program",
+            "description": "Build with gpp and debug with Delve",
+            "body": {
+              "type": "gpp",
+              "request": "launch",
+              "name": "Debug G++ program",
+              "program": "^\"\\${workspaceFolder}\""
+            }
+          }
+        ]
       }
     ]
   },
@@ -83,5 +156,9 @@
     "typescript": "^5.6.3",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.1.0"
-  }
+  },
+  "activationEvents": [
+    "onDebugResolve:gpp",
+    "onDebugDynamicConfigurations:gpp"
+  ]
 }

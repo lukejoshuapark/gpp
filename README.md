@@ -115,6 +115,10 @@ edited package and its dependents are checked again.
   are added to the imports when accepted;
 - hover with documentation (also on `?` and `=>`, showing types);
 - go to definition, including into the standard library;
+- find references and rename, across the module's packages;
+- organize imports (adds missing imports, removes unused ones), on save;
+- debugging with breakpoints in `.gpp` files (needs the Go extension and
+  Delve; see `src/vscode/README.md`);
 - signature help;
 - formatting on save;
 - quick fixes for missing imports;

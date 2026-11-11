@@ -343,7 +343,7 @@ func (l *lowerer) callParts(call *ast.CallExpr, pre *[]ast.Stmt) {
 
 // ifStmt lowers an if statement, including else-if chains.
 func (l *lowerer) ifStmt(s *ast.IfStmt) []ast.Stmt {
-	binds := l.bindings(s.Cond, s.Body)
+	binds := l.bindings(s.Cond, s.Body, s)
 	var init []ast.Stmt
 	if s.Init != nil {
 		init = l.stmt(s.Init)
@@ -582,7 +582,7 @@ func (l *lowerer) ternary(x *ast.TernaryExpr, pre *[]ast.Stmt) ast.Expr {
 		return x
 	}
 	typ = types.Default(typ)
-	binds := l.bindings(x.Cond, x.X)
+	binds := l.bindings(x.Cond, x.X, x)
 	if len(binds) > 0 {
 		// The condition binds names: it is evaluated after their
 		// declarations, in the function literal or statements below.

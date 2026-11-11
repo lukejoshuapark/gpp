@@ -139,11 +139,13 @@ func (s *server) dispatch(m *message) (result any, rerr *rpcError) {
 				TextDocumentSync:       TextDocumentSyncOptions{OpenClose: true, Change: 1},
 				HoverProvider:          true,
 				CompletionProvider:     &CompletionOptions{TriggerCharacters: []string{"."}},
-				CodeActionProvider:     true,
+				CodeActionProvider:     &CodeActionOptions{CodeActionKinds: []string{"quickfix", "source.organizeImports"}},
 				SignatureHelpProvider:  &SignatureHelpOptions{TriggerCharacters: []string{"(", ","}, RetriggerCharacters: []string{")"}},
 				DefinitionProvider:     true,
 				DocumentSymbolProvider: true,
 				FormattingProvider:     true,
+				ReferencesProvider:     true,
+				RenameProvider:         &RenameOptions{PrepareProvider: true},
 				SemanticTokensProvider: &SemanticTokensOptions{
 					Legend: SemanticTokensLegend{TokenTypes: semanticTokenTypes, TokenModifiers: semanticTokenModifiers},
 					Full:   true,
@@ -237,6 +239,32 @@ func (s *server) dispatch(m *message) (result any, rerr *rpcError) {
 			return nil, e
 		}
 		return s.documentSymbols(p), nil
+	case "textDocument/references":
+		var p ReferenceParams
+		if e := decode(&p); e != nil {
+			return nil, e
+		}
+		return s.findReferences(p), nil
+	case "textDocument/prepareRename":
+		var p TextDocumentPositionParams
+		if e := decode(&p); e != nil {
+			return nil, e
+		}
+		r, err := s.prepareRename(p)
+		if err != nil {
+			return nil, &rpcError{Code: codeRequestFailed, Message: err.Error()}
+		}
+		return r, nil
+	case "textDocument/rename":
+		var p RenameParams
+		if e := decode(&p); e != nil {
+			return nil, e
+		}
+		edit, err := s.rename(p)
+		if err != nil {
+			return nil, &rpcError{Code: codeRequestFailed, Message: err.Error()}
+		}
+		return edit, nil
 	case "textDocument/semanticTokens/full":
 		var p SemanticTokensParams
 		if e := decode(&p); e != nil {

@@ -344,9 +344,28 @@ func (l *lowerer) isExpr(x *ast.IsExpr, pre *[]ast.Stmt) ast.Expr {
 // an if statement or ternary expression: they are renamed (so they cannot
 // capture names the condition uses before them) in cond and body, and
 // returned as variable declarations to put ahead of the condition.
-func (l *lowerer) bindings(cond ast.Expr, body ast.Node) []ast.Stmt {
+//
+// A bound name keeps its name (as debuggers show it) unless the statement
+// (scope) uses the same name for something else.
+func (l *lowerer) bindings(cond ast.Expr, body, scope ast.Node) []ast.Stmt {
 	var decls []ast.Stmt
 	renames := map[types.Object]string{}
+	conflicts := func(name string, obj types.Object) bool {
+		found := false
+		ast.Inspect(scope, func(n ast.Node) bool {
+			if id, ok := n.(*ast.Ident); ok && id.Name == name {
+				other := l.info.Uses[id]
+				if other == nil {
+					other = l.info.Defs[id]
+				}
+				if other != obj {
+					found = true
+				}
+			}
+			return !found
+		})
+		return found
+	}
 	ast.Inspect(cond, func(n ast.Node) bool {
 		is, ok := n.(*ast.IsExpr)
 		if !ok {
@@ -354,7 +373,10 @@ func (l *lowerer) bindings(cond ast.Expr, body ast.Node) []ast.Stmt {
 		}
 		if _, bind := l.patternParts(is.Pattern); bind != nil {
 			if obj := l.info.Defs[bind]; obj != nil {
-				name := l.temp(bind.Pos(), bind.Name+"_")
+				name := &ast.Ident{NamePos: bind.Pos(), Name: bind.Name}
+				if conflicts(bind.Name, obj) {
+					name = l.temp(bind.Pos(), bind.Name+"_")
+				}
 				renames[obj] = name.Name
 				decls = append(decls, &ast.DeclStmt{Decl: &ast.GenDecl{TokPos: bind.Pos(), Tok: token.VAR, Specs: []ast.Spec{
 					&ast.ValueSpec{Names: []*ast.Ident{name}, Type: l.typeExpr(obj.Type(), bind.Pos())},
