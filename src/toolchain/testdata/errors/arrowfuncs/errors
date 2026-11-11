@@ -1,0 +1,5 @@
+main.gpp:3:25: cannot use "s" (untyped string constant) as int value in return statement
+main.gpp:5:19: 1 + 2 (untyped int constant 3) is not used
+main.gpp:7:33: not enough return values
+	have (number)
+	want (int, string)

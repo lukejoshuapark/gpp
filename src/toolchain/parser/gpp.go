@@ -105,3 +105,23 @@ func (p *parser) parseLambdaBody(params *ast.FieldList) ast.Expr {
 	}
 	return lam
 }
+
+// parseArrowBody parses the "=> expr" body of a function declaration,
+// returning the equivalent block: { return expr, ... }, or { expr } if
+// the function has no results.
+func (p *parser) parseArrowBody(results *ast.FieldList) *ast.BlockStmt {
+	arrow := p.expect(lexer.FAT_ARROW)
+	p.exprLev++
+	list := p.parseList(true)
+	p.exprLev--
+	var s ast.Stmt
+	if results != nil && len(results.List) > 0 {
+		s = &ast.ReturnStmt{Return: list[0].Pos(), Results: list}
+	} else {
+		if len(list) > 1 {
+			p.error(list[1].Pos(), "a function without results has a single expression after =>")
+		}
+		s = &ast.ExprStmt{X: list[0]}
+	}
+	return &ast.BlockStmt{Lbrace: arrow, List: []ast.Stmt{s}}
+}

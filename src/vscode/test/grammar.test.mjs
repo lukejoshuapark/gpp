@@ -87,4 +87,10 @@ expect("double := x => x * 2", ["x", "variable.parameter.gpp"], ["=>", "keyword.
 expect("add := (a, b int) => a + b", ["int", "support.type.primitive.gpp"], ["=>", "keyword.operator.arrow.gpp"]);
 expect("sort.Slice(xs, (i, j) => xs[i] < xs[j])", ["Slice", "entity.name.function.call.gpp"], ["=>", "keyword.operator.arrow.gpp"]);
 
+expect("func (c Circle) Area() float64 => math.Pi * c.Radius",
+  ["Area", "entity.name.function.gpp"], ["float64", "support.type.primitive.gpp"], ["=>", "keyword.operator.arrow.gpp"]);
+expect("func (p P) Get() Point => p.pt", ["Point", "variable.other.gpp"], ["=>", "keyword.operator.arrow.gpp"]);
+expect("b := Button{OnClick: n => n}", ["n", "variable.parameter.gpp"], ["=>", "keyword.operator.arrow.gpp"]);
+expect("return x => x + 1", ["x", "variable.parameter.gpp"]);
+
 console.log("grammar tests passed");

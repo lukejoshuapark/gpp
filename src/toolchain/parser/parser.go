@@ -2825,9 +2825,15 @@ func (p *parser) parseFuncDecl() *ast.FuncDecl {
 	results := p.parseParameters(true)
 
 	var body *ast.BlockStmt
+	var arrow token.Pos
 	switch p.tok {
 	case token.LBRACE:
 		body = p.parseBody()
+		p.expectSemi()
+	case lexer.FAT_ARROW:
+		// G++: func f() T => expr
+		arrow = p.pos
+		body = p.parseArrowBody(results)
 		p.expectSemi()
 	case token.SEMICOLON:
 		p.next()
@@ -2842,9 +2848,10 @@ func (p *parser) parseFuncDecl() *ast.FuncDecl {
 	}
 
 	decl := &ast.FuncDecl{
-		Doc:  doc,
-		Recv: recv,
-		Name: ident,
+		Arrow: arrow,
+		Doc:   doc,
+		Recv:  recv,
+		Name:  ident,
 		Type: &ast.FuncType{
 			Func:       pos,
 			TypeParams: tparams,

@@ -1056,6 +1056,11 @@ type (
 		Name *Ident        // function/method name
 		Type *FuncType     // function signature: type and value parameters, results, and position of "func" keyword
 		Body *BlockStmt    // function body; or nil for external (non-Go) function
+
+		// G++: for "func f() T => expr", the position of "=>". Body is
+		// then { return expr } (or { expr } without results), with
+		// Lbrace at Arrow and no Rbrace.
+		Arrow token.Pos
 	}
 )
 

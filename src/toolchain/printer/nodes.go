@@ -1986,6 +1986,23 @@ func (p *printer) funcDecl(d *ast.FuncDecl) {
 	}
 	p.expr(d.Name)
 	p.signature(d.Type)
+	if d.Arrow.IsValid() && d.Body != nil && len(d.Body.List) == 1 {
+		// G++: func f() T => expr
+		var xs []ast.Expr
+		switch s := d.Body.List[0].(type) {
+		case *ast.ReturnStmt:
+			xs = s.Results
+		case *ast.ExprStmt:
+			xs = []ast.Expr{s.X}
+		}
+		if len(xs) > 0 {
+			p.print(blank)
+			p.setPos(d.Arrow)
+			p.print(lexer.FAT_ARROW, blank)
+			p.exprList(token.NoPos, xs, 1, 0, token.NoPos, false)
+			return
+		}
+	}
 	p.funcBody(p.distanceFrom(d.Pos(), startCol), vtab, d.Body)
 }
 

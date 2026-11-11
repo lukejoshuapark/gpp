@@ -1,0 +1,7 @@
+12.57
+49 odd even
+12 <nil>
+42 <nil>
+0 strconv.Atoi: parsing "x": invalid syntax
+[1 4 9]
+hello, world

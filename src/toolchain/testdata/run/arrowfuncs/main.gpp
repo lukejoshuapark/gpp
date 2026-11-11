@@ -1,0 +1,46 @@
+package main
+
+import (
+	"fmt"
+	"math"
+	"strconv"
+)
+
+type Circle struct{ Radius float64 }
+
+func (c Circle) Area() float64 => math.Pi * c.Radius * c.Radius
+
+func (c *Circle) Grow(by float64) => c.scale(1 + by)
+
+func (c *Circle) scale(f float64) { c.Radius *= f }
+
+func square(n int) int => n * n
+
+func describe(n int) string => n%2 == 0 ? "even" : "odd"
+
+func parse(s string) (int, error) => strconv.Atoi(s)
+
+func double(s string) (int, error) => parse(s)? * 2, nil
+
+func Map[T, U any](xs []T, f func(T) U) []U => mapInto(make([]U, 0, len(xs)), xs, f)
+
+func mapInto[T, U any](out []U, xs []T, f func(T) U) []U {
+	for _, x := range xs {
+		out = append(out, f(x))
+	}
+	return out
+}
+
+func greet(name string) => fmt.Println("hello,", name)
+
+func main() {
+	c := Circle{Radius: 1}
+	c.Grow(1)
+	fmt.Printf("%.2f\n", c.Area())
+	fmt.Println(square(7), describe(3), describe(4))
+	fmt.Println(parse("12"))
+	fmt.Println(double("21"))
+	fmt.Println(double("x"))
+	fmt.Println(Map([]int{1, 2, 3}, n => square(n)))
+	greet("world")
+}

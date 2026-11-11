@@ -77,3 +77,20 @@ onClick := () => {
   `Map(users, u => u.Name)`.
 - A lambda is an ordinary Go func value, so it can be passed to and from Go
   code.
+
+## Expression-bodied functions and methods
+
+A function or method whose body is a single `return` (or a single call) can
+be written with `=>`:
+
+```go
+func (c Circle) Area() float64 => math.Pi * c.Radius * c.Radius
+func square(n int) int => n * n
+func parse(s string) (Port, error) => Port(strconv.Atoi(s)?), nil
+func greet(name string) => fmt.Println("hello,", name)
+```
+
+- `func f() T => x` means `func f() T { return x }`.
+- For several results, list the values: `=> v, nil`.
+- A function without results takes a single expression (normally a call),
+  which runs as a statement.

@@ -211,7 +211,7 @@
     "lambda": {
       "patterns": [
         {
-          "match": "([_\\p{L}][_\\p{L}\\p{N}]*)\\s*(=>)",
+          "match": "(?<=[(,=:{]|[(,=:{]\\s|return\\s)([_\\p{L}][_\\p{L}\\p{N}]*)\\s*(=>)",
           "captures": {
             "1": {
               "name": "variable.parameter.gpp"

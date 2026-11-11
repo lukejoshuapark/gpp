@@ -109,6 +109,7 @@ func (l *lowerer) decl(d ast.Decl) {
 		if d.Body == nil {
 			return
 		}
+		d.Arrow = token.NoPos // print the body as a block
 		saved := l.fn
 		if obj, _ := l.info.Defs[d.Name].(*types.Func); obj != nil {
 			l.fn = obj.Signature()
