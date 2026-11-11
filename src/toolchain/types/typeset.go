@@ -8,8 +8,8 @@
 package types
 
 import (
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/token"
-	. "gpp/internal/typeerrors"
 	"slices"
 	"strings"
 )

@@ -7,8 +7,8 @@
 package types
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 	"go/token"
-	"gpp/ast"
 )
 
 // isTerminating reports if s is a terminating statement.

@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gpp/driver"
-	"gpp/lsp"
+	"github.com/lukejoshuapark/gpp/src/toolchain/driver"
+	"github.com/lukejoshuapark/gpp/src/toolchain/lsp"
 )
 
 const version = "0.1.0"

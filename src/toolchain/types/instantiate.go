@@ -13,8 +13,8 @@ package types
 import (
 	"errors"
 	"fmt"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/token"
-	. "gpp/internal/typeerrors"
 )
 
 // A genericType implements access to its type parameters.

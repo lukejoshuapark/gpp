@@ -11,8 +11,8 @@ package types
 
 import (
 	"fmt"
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"strings"
 )
 

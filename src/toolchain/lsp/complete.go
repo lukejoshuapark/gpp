@@ -8,9 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"gpp/ast"
-	"gpp/driver"
-	"gpp/types"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/driver"
+	"github.com/lukejoshuapark/gpp/src/toolchain/types"
 )
 
 var keywords = []string{

@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"gpp/ast"
-	"gpp/driver"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/driver"
 )
 
 // Serve runs the language server over r and w until the client exits.

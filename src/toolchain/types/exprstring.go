@@ -9,7 +9,7 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"gpp/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 )
 
 // ExprString returns the (possibly shortened) string representation for x.

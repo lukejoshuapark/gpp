@@ -9,8 +9,8 @@ package parser
 import (
 	"bytes"
 	"errors"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 	"go/token"
-	"gpp/ast"
 	"io"
 	"io/fs"
 	"os"

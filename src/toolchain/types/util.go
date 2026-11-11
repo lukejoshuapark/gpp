@@ -10,9 +10,9 @@
 package types
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 	"go/constant"
 	"go/token"
-	"gpp/ast"
 )
 
 const isTypes2 = false

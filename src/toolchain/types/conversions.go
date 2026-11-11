@@ -10,8 +10,8 @@
 package types
 
 import (
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/constant"
-	. "gpp/internal/typeerrors"
 	"unicode"
 )
 

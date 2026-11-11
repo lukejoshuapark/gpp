@@ -9,9 +9,9 @@
 package printer
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/lexer"
 	"go/token"
-	"gpp/ast"
-	"gpp/lexer"
 	"strconv"
 	"strings"
 	"unicode"

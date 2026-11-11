@@ -17,10 +17,10 @@ package format
 import (
 	"bytes"
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/parser"
+	"github.com/lukejoshuapark/gpp/src/toolchain/printer"
 	"go/token"
-	"gpp/ast"
-	"gpp/parser"
-	"gpp/printer"
 	"io"
 )
 

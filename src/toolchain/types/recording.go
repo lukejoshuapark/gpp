@@ -11,8 +11,8 @@
 package types
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 	"go/constant"
-	"gpp/ast"
 )
 
 func (check *Checker) record(x *operand) {

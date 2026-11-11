@@ -9,8 +9,8 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 	"go/token"
-	"gpp/ast"
 	"strconv"
 	"strings"
 )

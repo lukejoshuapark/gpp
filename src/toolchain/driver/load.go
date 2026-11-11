@@ -23,10 +23,10 @@ import (
 	"strings"
 	"sync"
 
-	"gpp/ast"
-	"gpp/lexer"
-	"gpp/parser"
-	"gpp/types"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/lexer"
+	"github.com/lukejoshuapark/gpp/src/toolchain/parser"
+	"github.com/lukejoshuapark/gpp/src/toolchain/types"
 )
 
 // Config configures loading.

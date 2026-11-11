@@ -6,9 +6,9 @@ package types
 
 import (
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/parser"
 	"go/token"
-	"gpp/ast"
-	"gpp/parser"
 )
 
 // Eval returns the type and, if constant, the value for the

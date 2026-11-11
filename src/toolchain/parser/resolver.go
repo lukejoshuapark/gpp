@@ -6,8 +6,8 @@ package parser
 
 import (
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 	"go/token"
-	"gpp/ast"
 	"strings"
 )
 

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"gpp/ast"
-	"gpp/lower"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/lower"
 )
 
 // A Lowered file is the Go translation of a .gpp file.

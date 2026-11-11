@@ -24,9 +24,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gpp/ast"
-	"gpp/printer"
-	"gpp/types"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/printer"
+	"github.com/lukejoshuapark/gpp/src/toolchain/types"
 )
 
 // enumDecl lowers the enum type declaration spec, and generates its

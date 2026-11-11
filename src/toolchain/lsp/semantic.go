@@ -3,8 +3,8 @@ package lsp
 import (
 	"slices"
 
-	"gpp/ast"
-	"gpp/types"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/types"
 )
 
 // Semantic tokens: the server classifies identifiers by what they denote

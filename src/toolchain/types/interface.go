@@ -5,9 +5,9 @@
 package types
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/token"
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
 )
 
 // ----------------------------------------------------------------------------

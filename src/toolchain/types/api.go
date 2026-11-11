@@ -37,10 +37,10 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/constant"
 	"go/token"
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
 )
 
 // An Error describes a type-checking error; it implements the error interface.

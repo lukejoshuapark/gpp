@@ -11,7 +11,7 @@ import (
 	"cmp"
 	"container/heap"
 	"fmt"
-	. "gpp/internal/typeerrors"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"slices"
 	"sort"
 )

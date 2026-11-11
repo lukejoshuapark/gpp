@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"gpp/ast"
-	"gpp/driver"
-	"gpp/types"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/driver"
+	"github.com/lukejoshuapark/gpp/src/toolchain/types"
 )
 
 // Find references and rename. References are searched for in every

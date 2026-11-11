@@ -7,10 +7,10 @@ package printer
 
 import (
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/lexer"
 	"go/build/constraint"
 	"go/token"
-	"gpp/ast"
-	"gpp/lexer"
 	"io"
 	"os"
 	"strings"

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gpp/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 )
 
 // importEdits returns the edits adding an import of importPath to the

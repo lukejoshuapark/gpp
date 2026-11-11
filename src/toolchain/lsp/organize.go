@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"gpp/ast"
-	"gpp/format"
-	"gpp/parser"
-	"gpp/types"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/format"
+	"github.com/lukejoshuapark/gpp/src/toolchain/parser"
+	"github.com/lukejoshuapark/gpp/src/toolchain/types"
 )
 
 // Organize imports: remove unused imports and add missing ones (packages

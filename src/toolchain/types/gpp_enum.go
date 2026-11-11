@@ -25,8 +25,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 )
 
 // EnumTagField is the name of the tag field of an enum's underlying struct.

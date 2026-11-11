@@ -10,10 +10,10 @@
 package types
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/constant"
 	"go/token"
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
 )
 
 // builtin type-checks a call to the built-in specified by id and

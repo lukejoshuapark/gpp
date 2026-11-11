@@ -5,8 +5,8 @@
 package printer
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
 	"go/doc/comment"
-	"gpp/ast"
 	"strings"
 )
 

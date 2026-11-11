@@ -8,8 +8,8 @@ package ast
 
 import (
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/lexer"
 	"go/token"
-	"gpp/lexer"
 	"strconv"
 )
 

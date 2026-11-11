@@ -7,10 +7,10 @@ package types
 import (
 	"cmp"
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/constant"
 	"go/token"
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
 	"slices"
 	"strconv"
 	"strings"

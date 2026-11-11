@@ -3,8 +3,8 @@ package parser
 import (
 	"go/token"
 
-	"gpp/ast"
-	"gpp/lexer"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/lexer"
 )
 
 // G++ additions to the parser.

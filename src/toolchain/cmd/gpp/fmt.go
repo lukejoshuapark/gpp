@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gpp/format"
+	"github.com/lukejoshuapark/gpp/src/toolchain/format"
 )
 
 // fmtCmd formats G++ files: gpp fmt [-l] [paths]. Directories are

@@ -11,8 +11,8 @@ import (
 	"go/token"
 	"strings"
 
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 )
 
 // lambdaType is the provisional type of a lambda call argument whose

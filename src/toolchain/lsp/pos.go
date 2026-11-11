@@ -7,8 +7,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"gpp/ast"
-	"gpp/driver"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/driver"
 )
 
 // Positions: Go positions are 1-based with byte columns; LSP positions are

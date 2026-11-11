@@ -10,9 +10,9 @@
 package types
 
 import (
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/constant"
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
 )
 
 // rangeStmt type-checks a range statement of form

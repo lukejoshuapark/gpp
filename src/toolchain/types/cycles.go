@@ -7,7 +7,7 @@
 
 package types
 
-import "gpp/ast"
+import "github.com/lukejoshuapark/gpp/src/toolchain/ast"
 
 // directCycles searches for direct cycles among package level type declarations.
 // See directCycle for details.

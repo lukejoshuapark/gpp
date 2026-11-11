@@ -8,9 +8,9 @@ package types
 
 import (
 	"fmt"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/constant"
-	"gpp/ast"
-	. "gpp/internal/typeerrors"
 	"strings"
 )
 

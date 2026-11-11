@@ -10,9 +10,9 @@
 package types
 
 import (
+	. "github.com/lukejoshuapark/gpp/src/toolchain/internal/typeerrors"
 	"go/constant"
 	"go/token"
-	. "gpp/internal/typeerrors"
 	"math"
 )
 

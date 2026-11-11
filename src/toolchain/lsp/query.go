@@ -8,9 +8,9 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"gpp/ast"
-	"gpp/format"
-	"gpp/types"
+	"github.com/lukejoshuapark/gpp/src/toolchain/ast"
+	"github.com/lukejoshuapark/gpp/src/toolchain/format"
+	"github.com/lukejoshuapark/gpp/src/toolchain/types"
 )
 
 // qualifier writes package-qualified names relative to pkg.
