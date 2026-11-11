@@ -1,0 +1,8 @@
+package main
+
+import "fmt"
+
+// Plain Go is G++.
+func main() {
+	fmt.Println("Hello, G++!")
+}

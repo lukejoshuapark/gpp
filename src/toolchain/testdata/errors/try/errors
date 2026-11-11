@@ -1,0 +1,6 @@
+main.gpp:5:31: ? can only be used inside a function
+main.gpp:8:24: ? can only be used in a function whose last result is an error
+main.gpp:12:2: cannot use ? on strconv.Itoa(3): string is not an error
+main.gpp:17:7: println() (no value) cannot be used with ?
+main.gpp:23:7: multiple-value twoResults()? (value of type (int, int)) in single-value context
+main.gpp:42:36: ? can only be used in a function whose last result is an error

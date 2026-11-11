@@ -1,0 +1,46 @@
+package main
+
+import "strconv"
+
+var global = strconv.Atoi("1")?
+
+func noError(s string) int {
+	return strconv.Atoi(s)?
+}
+
+func notAnError() error {
+	strconv.Itoa(3)?
+	return nil
+}
+
+func noValue() error {
+	x := println()?
+	_ = x
+	return nil
+}
+
+func tooMany() error {
+	n := twoResults()?
+	_ = n
+	return nil
+}
+
+func twoResults() (int, int, error) { return 0, 0, nil }
+
+type T struct{}
+
+func (T) Error() string { return "" }
+
+func notNilable() (T, error) { return T{}, nil }
+
+func valueError() error {
+	notNilable()?
+	return nil
+}
+
+func lambdaResult() {
+	f := (s string) => strconv.Atoi(s)?
+	_ = f
+}
+
+func main() {}

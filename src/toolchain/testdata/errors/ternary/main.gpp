@@ -1,0 +1,13 @@
+package main
+
+type A struct{}
+type B struct{}
+
+func main() {
+	x := 1 ? 2 : 3
+	y := true ? "a" : 1
+	z := true ? A{} : B{}
+	n := true ? nil : nil
+	const c = true ? 1 : 2
+	_, _, _, _ = x, y, z, n
+}

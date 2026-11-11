@@ -1,0 +1,22 @@
+package main
+
+import "strings"
+
+func Apply[T, U any](x T, f func(T) U) U { return f(x) }
+
+func Use[T any](f func(T)) {}
+
+func main() {
+	f := x => x
+	g := (a int) => a
+	_ = g("s")
+	strings.Map((a, b) => a, "x")
+	strings.Map((r string) => r, "x")
+	var h func(int) int = x => "s"
+	Use(x => {})
+	_ = Apply(1, x => {
+		return x
+	})
+	var k int = x => x
+	_, _, _ = f, h, k
+}

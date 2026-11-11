@@ -1,0 +1,14 @@
+package main
+
+import (
+	"fmt"
+
+	"example.com/test/geom"
+)
+
+func main() {
+	fmt.Println(goHelper(4))
+	fmt.Println(fromGpp(2))
+	p := geom.Point{X: 3, Y: 4}
+	fmt.Println(p.Dist(), geom.Describe(p))
+}

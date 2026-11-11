@@ -1,0 +1,5 @@
+main.gpp:5:2: "os" imported and not used
+main.gpp:9:6: declared and not used: unused
+main.gpp:10:14: undefined: undefined
+main.gpp:11:6: declared and not used: s
+main.gpp:11:17: cannot use 1 (untyped int constant) as string value in variable declaration

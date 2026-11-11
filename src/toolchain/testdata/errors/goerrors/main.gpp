@@ -1,0 +1,12 @@
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	var unused int
+	fmt.Println(undefined)
+	var s string = 1
+}

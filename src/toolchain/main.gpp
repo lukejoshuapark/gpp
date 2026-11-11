@@ -1,0 +1,39 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+)
+
+func parse(s string) (int, error) {
+	n := strconv.Atoi(s)?
+	return n > 0 ? n : -n, nil
+}
+
+func Map[T, U any](xs []T, f func(T) U) []U {
+	var out []U
+	for _, x := range xs {
+		out = append(out, f(x))
+	}
+	return out
+}
+
+func main() {
+	n, err := parse("-42")
+	fmt.Println(n, err)
+	up := strings.Map(r => r + 1, "HAL")
+	fmt.Println(up)
+	strs := Map([]int{1, 2, 3}, x => strconv.Itoa(x * 2))
+	fmt.Println(strs)
+	add := (a, b int) => a + b
+	fmt.Println(add(1, 2))
+	var f func(int) string = x => fmt.Sprint(x)
+	fmt.Println(f(3))
+	http.HandleFunc("/", (w, r) => {
+		fmt.Fprintln(w, "hi", r.URL.Path)
+	})
+	var x float64 = n > 0 ? 1 : 2.5
+	fmt.Println(x)
+}

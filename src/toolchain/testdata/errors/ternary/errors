@@ -1,0 +1,5 @@
+main.gpp:7:7: non-boolean condition in ternary expression
+main.gpp:8:7: invalid operation: mismatched types untyped string and untyped int in ternary expression
+main.gpp:9:7: invalid operation: mismatched types A and B in ternary expression
+main.gpp:10:7: use of untyped nil in ternary expression
+main.gpp:11:12: true ? 1 : 2 (untyped int value) is not constant

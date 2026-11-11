@@ -1,0 +1,8 @@
+main.gpp:10:7: cannot infer type of lambda parameter x: no function type is expected here (add a type: (x T) => ...)
+main.gpp:12:8: cannot use "s" (untyped string constant) as int value in argument to g
+main.gpp:13:14: lambda has 2 parameters, but func(rune) rune needs 1
+main.gpp:14:17: lambda parameter r has type string, but func(rune) rune needs rune
+main.gpp:15:29: cannot use "s" (untyped string constant) as int value in return statement
+main.gpp:16:6: cannot infer the parameter types of this lambda in call to Use
+main.gpp:17:15: cannot infer the result type of this lambda: use an expression body, or give the type arguments explicitly
+main.gpp:20:14: cannot infer type of lambda parameter x: no function type is expected here (add a type: (x T) => ...)

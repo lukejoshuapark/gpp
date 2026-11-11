@@ -1,0 +1,101 @@
+package main
+
+import (
+	"fmt"
+	"slices"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+func Map[T, U any](xs []T, f func(T) U) []U {
+	out := make([]U, 0, len(xs))
+	for _, x := range xs {
+		out = append(out, f(x))
+	}
+	return out
+}
+
+func Filter[T any](xs []T, keep func(T) bool) []T {
+	var out []T
+	for _, x := range xs {
+		if keep(x) {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
+func Reduce[T, A any](xs []T, init A, f func(A, T) A) A {
+	acc := init
+	for _, x := range xs {
+		acc = f(acc, x)
+	}
+	return acc
+}
+
+type Handler func(name string) string
+
+type Button struct {
+	Label   string
+	OnClick func(times int) string
+}
+
+func apply(h Handler, name string) string { return h(name) }
+
+func main() {
+	nums := []int{5, 3, 8, 1}
+
+	// parameter types from the callee
+	sort.Slice(nums, (i, j) => nums[i] < nums[j])
+	fmt.Println(nums)
+	fmt.Println(strings.Map(r => r + 1, "HAL"))
+
+	// generic callees: T from the slice, U from the lambda's result
+	fmt.Println(Map(nums, n => n * n))
+	fmt.Println(Map(nums, n => "#" + strconv.Itoa(n)))
+	fmt.Println(Filter(nums, n => n%2 == 1))
+	fmt.Println(Reduce(nums, "", (acc, n) => acc + strconv.Itoa(n)))
+	fmt.Println(slices.IndexFunc(nums, n => n > 4))
+
+	// explicit types
+	add := (a, b int) => a + b
+	square := (x float64) => x * x
+	fmt.Println(add(2, 3), square(1.5))
+
+	// no parameters, block bodies
+	counter := 0
+	inc := () => {
+		counter++
+	}
+	inc()
+	inc()
+	fmt.Println(counter)
+
+	// named function types, struct fields, variables
+	fmt.Println(apply(n => "hello " + n, "world"))
+	b := Button{Label: "ok", OnClick: times => strings.Repeat("click ", times)}
+	fmt.Println(b.OnClick(2))
+	var greet func(string) string = name => {
+		return "hi " + name
+	}
+	fmt.Println(greet("bob"))
+
+	// closures capture variables
+	total := 0
+	addTo := (n int) => {
+		total += n
+	}
+	for _, n := range nums {
+		addTo(n)
+	}
+	fmt.Println(total)
+
+	// lambdas returning lambdas
+	adder := (n int) => (m int) => n + m
+	fmt.Println(adder(10)(5))
+
+	// variadic
+	join := (sep string, parts ...string) => strings.Join(parts, sep)
+	fmt.Println(join("-", "a", "b", "c"))
+}

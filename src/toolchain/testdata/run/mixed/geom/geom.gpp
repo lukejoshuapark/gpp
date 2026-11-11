@@ -1,0 +1,10 @@
+// Package geom is a G++ package imported by a G++ program.
+package geom
+
+import "math"
+
+type Point struct{ X, Y float64 }
+
+func (p Point) Dist() float64 { return math.Sqrt(p.X*p.X + p.Y*p.Y) }
+
+func Describe(p Point) string { return p.Dist() > 4 ? "far" : "near" }

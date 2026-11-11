@@ -1,0 +1,8 @@
+package main
+
+func main() {
+	x := true
+		? 1
+		: 2
+	f := (a, b int, c) => a
+}

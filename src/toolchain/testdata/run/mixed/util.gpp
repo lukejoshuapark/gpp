@@ -1,0 +1,3 @@
+package main
+
+func fromGpp(n int) int { return n > 1 ? goHelper(n) : 0 }

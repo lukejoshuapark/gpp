@@ -1,0 +1,157 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+type Point struct{ X, Y int }
+
+func parsePoint(s string) (Point, error) {
+	xs, ys, ok := strings.Cut(s, ",")
+	if !ok {
+		return Point{}, fmt.Errorf("no comma in %q", s)
+	}
+	return Point{strconv.Atoi(xs)?, strconv.Atoi(ys)?}, nil
+}
+
+func sum(fields ...string) (int, error) {
+	total := 0
+	for _, f := range fields {
+		total += strconv.Atoi(f)?
+	}
+	return total, nil
+}
+
+func divmod(a, b int) (int, int, error) {
+	if b == 0 {
+		return 0, 0, errors.New("division by zero")
+	}
+	return a / b, a % b, nil
+}
+
+func useDivmod(a, b int) (string, error) {
+	q, r := divmod(a, b)?
+	return fmt.Sprintf("%d r %d", q, r), nil
+}
+
+func check(ok bool) error {
+	if !ok {
+		return errors.New("not ok")
+	}
+	return nil
+}
+
+func statements() (int, error) {
+	check(true)?
+	err := check(true)
+	err?
+	return 1, nil
+}
+
+// MyErr is a concrete error type: ? checks it before converting to error,
+// so a nil *MyErr is not mistaken for an error.
+type MyErr struct{ msg string }
+
+func (e *MyErr) Error() string { return e.msg }
+
+func mayFail(fail bool) (int, *MyErr) {
+	if fail {
+		return 0, &MyErr{"failed"}
+	}
+	return 7, nil
+}
+
+func concrete(fail bool) (int, error) {
+	return mayFail(fail)? * 2, nil
+}
+
+// Calls keep their order even when a later operand needs statements.
+var trace []string
+
+func note(s string) string { trace = append(trace, s); return s }
+
+func noted(s string) (string, error) { trace = append(trace, s); return s, nil }
+
+func order() (string, error) {
+	return note("a") + noted("b")? + note("c"), nil
+}
+
+func generic[T any](v T, err error) (T, error) {
+	x := func() (T, error) { return v, err }()?
+	return x, nil
+}
+
+func shortCircuit(s string) (bool, error) {
+	return s != "" && strconv.ParseBool(s)?, nil
+}
+
+func ternaryBranch(useDefault bool, s string) (int, error) {
+	return useDefault ? 42 : strconv.Atoi(s)?, nil
+}
+
+func loop(input []string) (int, error) {
+	i := 0
+	for i < len(input) && strconv.Atoi(input[i])? > 0 {
+		i++
+	}
+	return i, nil
+}
+
+func ifInit(s string) (string, error) {
+	if n := strconv.Atoi(s)?; n > 10 {
+		return "big", nil
+	} else if strconv.Atoi(s)? > 5 {
+		return "medium", nil
+	}
+	return "small", nil
+}
+
+func lambdas() error {
+	parse := (s string) => strconv.Atoi(s)
+	n := parse("12")?
+	var double func(string) (int, error) = s => {
+		v := parse(s)?
+		return v * 2, nil
+	}
+	fmt.Println(n)
+	fmt.Println(double("4"))
+	_, err := double("x")
+	fmt.Println(err)
+	return nil
+}
+
+func main() {
+	fmt.Println(parsePoint("3,4"))
+	fmt.Println(parsePoint("3;4"))
+	fmt.Println(parsePoint("3,x"))
+	fmt.Println(sum("1", "2", "3"))
+	fmt.Println(sum("1", "two"))
+	fmt.Println(useDivmod(7, 2))
+	fmt.Println(useDivmod(7, 0))
+	fmt.Println(statements())
+	fmt.Println(concrete(false))
+	fmt.Println(concrete(true))
+	fmt.Println(order())
+	fmt.Println(trace)
+	fmt.Println(generic(3, nil))
+	fmt.Println(generic("x", errors.New("generic failure")))
+	fmt.Println(shortCircuit(""))
+	fmt.Println(shortCircuit("true"))
+	fmt.Println(shortCircuit("maybe"))
+	fmt.Println(ternaryBranch(true, "x"))
+	fmt.Println(ternaryBranch(false, "9"))
+	fmt.Println(ternaryBranch(false, "x"))
+	fmt.Println(loop([]string{"3", "2", "0", "1"}))
+	fmt.Println(loop([]string{"3", "y"}))
+	fmt.Println(ifInit("20"))
+	fmt.Println(ifInit("7"))
+	fmt.Println(ifInit("1"))
+	fmt.Println(lambdas())
+	if _, err := os.Open("/does/not/exist"); err != nil {
+		fmt.Println("open failed as expected")
+	}
+}

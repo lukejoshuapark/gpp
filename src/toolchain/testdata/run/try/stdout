@@ -1,0 +1,30 @@
+{3 4} <nil>
+{0 0} no comma in "3;4"
+{0 0} strconv.Atoi: parsing "x": invalid syntax
+6 <nil>
+0 strconv.Atoi: parsing "two": invalid syntax
+3 r 1 <nil>
+ division by zero
+1 <nil>
+14 <nil>
+0 failed
+abc <nil>
+[a b c]
+3 <nil>
+ generic failure
+false <nil>
+true <nil>
+false strconv.ParseBool: parsing "maybe": invalid syntax
+42 <nil>
+9 <nil>
+0 strconv.Atoi: parsing "x": invalid syntax
+2 <nil>
+0 strconv.Atoi: parsing "y": invalid syntax
+big <nil>
+medium <nil>
+small <nil>
+12
+8 <nil>
+strconv.Atoi: parsing "x": invalid syntax
+<nil>
+open failed as expected

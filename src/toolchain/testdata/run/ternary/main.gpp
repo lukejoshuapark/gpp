@@ -1,0 +1,54 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+type Celsius float64
+
+type shape interface{ area() float64 }
+
+type square struct{ side float64 }
+
+func (s square) area() float64 { return s.side * s.side }
+
+type circle struct{ r float64 }
+
+func (c circle) area() float64 { return 3 * c.r * c.r }
+
+func abs(n int) int { return n < 0 ? -n : n }
+
+func sign(n int) string {
+	return n > 0 ? "positive" : n < 0 ? "negative" : "zero"
+}
+
+func main() {
+	fmt.Println(abs(-3), abs(4))
+	fmt.Println(sign(5), sign(-5), sign(0))
+
+	// untyped constants take their type from the context
+	var f float64 = true ? 1 : 2.5
+	var c Celsius = false ? 1 : 36.6
+	x := true ? 1 : 2.5
+	fmt.Printf("%v %v %T\n", f, c, x)
+
+	// one branch is converted to the other's type
+	var err error = errors.New("boom")
+	e := len("ab") > 1 ? err : nil
+	fmt.Println(e)
+	var s shape = len("ab") > 1 ? shape(square{2}) : circle{1}
+	fmt.Println(s.area())
+
+	// only the chosen branch is evaluated
+	calls := 0
+	next := func() int { calls++; return calls }
+	v := calls == 0 ? next() : next()+100
+	fmt.Println(v, calls)
+
+	// across lines: break after ? and :
+	label := v > 0 ?
+		"big" :
+		"small"
+	fmt.Println(label)
+}

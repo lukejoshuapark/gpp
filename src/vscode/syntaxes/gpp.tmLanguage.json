@@ -1,0 +1,363 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "G++",
+  "scopeName": "source.gpp",
+  "fileTypes": [
+    "gpp"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#expressions"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.gpp",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.gpp"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.gpp"
+            }
+          }
+        },
+        {
+          "name": "comment.line.double-slash.gpp",
+          "begin": "//",
+          "end": "$",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.gpp"
+            }
+          }
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(package)\\s+([_\\p{L}][_\\p{L}\\p{N}]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.other.package.gpp"
+            },
+            "2": {
+              "name": "entity.name.namespace.gpp"
+            }
+          }
+        },
+        {
+          "match": "\\b(import)\\b",
+          "name": "keyword.other.import.gpp"
+        },
+        {
+          "match": "\\b(func)\\s*(\\([^)]*\\))?\\s*([_\\p{L}][_\\p{L}\\p{N}]*)(?=\\s*[\\[(])",
+          "captures": {
+            "1": {
+              "name": "storage.type.function.gpp"
+            },
+            "2": {
+              "patterns": [
+                {
+                  "include": "#expressions"
+                }
+              ]
+            },
+            "3": {
+              "name": "entity.name.function.gpp"
+            }
+          }
+        },
+        {
+          "match": "\\b(type)\\s+([_\\p{L}][_\\p{L}\\p{N}]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.gpp"
+            },
+            "2": {
+              "name": "entity.name.type.gpp"
+            }
+          }
+        }
+      ]
+    },
+    "expressions": {
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#lambda"
+        },
+        {
+          "include": "#keywords"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#types"
+        },
+        {
+          "include": "#calls"
+        },
+        {
+          "include": "#identifiers"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.gpp",
+          "begin": "\"",
+          "end": "\"|$",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.gpp"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.gpp"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#escapes"
+            },
+            {
+              "include": "#placeholders"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.raw.gpp",
+          "begin": "`",
+          "end": "`",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.gpp"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.gpp"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#placeholders"
+            }
+          ]
+        },
+        {
+          "name": "constant.character.gpp",
+          "match": "'(?:\\\\(?:[abfnrtv\\\\'\\\"]|[0-7]{3}|x\\h{2}|u\\h{4}|U\\h{8})|[^'\\\\])'"
+        }
+      ]
+    },
+    "escapes": {
+      "name": "constant.character.escape.gpp",
+      "match": "\\\\(?:[abfnrtv\\\\'\\\"]|[0-7]{3}|x\\h{2}|u\\h{4}|U\\h{8})"
+    },
+    "placeholders": {
+      "name": "constant.other.placeholder.gpp",
+      "match": "%(?:\\[\\d+\\])?[-+# 0]*(?:\\d+|\\*)?(?:\\.(?:\\d+|\\*))?[vTtbcdoOqxXUeEfFgGsp%]"
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.gpp",
+          "match": "\\b0[xX](?:_?\\h)+(?:\\.(?:_?\\h)*)?(?:[pP][+-]?\\d+)?i?\\b"
+        },
+        {
+          "name": "constant.numeric.binary.gpp",
+          "match": "\\b0[bB](?:_?[01])+i?\\b"
+        },
+        {
+          "name": "constant.numeric.octal.gpp",
+          "match": "\\b0[oO]?(?:_?[0-7])+i?\\b"
+        },
+        {
+          "name": "constant.numeric.float.gpp",
+          "match": "(?:\\b\\d(?:_?\\d)*\\.(?:\\d(?:_?\\d)*)?|\\B\\.\\d(?:_?\\d)*)(?:[eE][+-]?\\d(?:_?\\d)*)?i?\\b|\\b\\d(?:_?\\d)*[eE][+-]?\\d(?:_?\\d)*i?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.gpp",
+          "match": "\\b\\d(?:_?\\d)*i?\\b"
+        }
+      ]
+    },
+    "lambda": {
+      "patterns": [
+        {
+          "match": "([_\\p{L}][_\\p{L}\\p{N}]*)\\s*(=>)",
+          "captures": {
+            "1": {
+              "name": "variable.parameter.gpp"
+            },
+            "2": {
+              "name": "keyword.operator.arrow.gpp"
+            }
+          }
+        },
+        {
+          "match": "=>",
+          "name": "keyword.operator.arrow.gpp"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.gpp",
+          "match": "\\b(?:break|case|continue|default|defer|else|fallthrough|for|go|goto|if|range|return|select|switch)\\b"
+        },
+        {
+          "name": "storage.type.function.gpp",
+          "match": "\\bfunc\\b"
+        },
+        {
+          "name": "storage.type.gpp",
+          "match": "\\b(?:chan|const|interface|map|struct|type|var)\\b"
+        },
+        {
+          "name": "constant.language.boolean.gpp",
+          "match": "\\b(?:true|false)\\b"
+        },
+        {
+          "name": "constant.language.nil.gpp",
+          "match": "\\bnil\\b"
+        },
+        {
+          "name": "constant.language.iota.gpp",
+          "match": "\\biota\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.try.gpp",
+          "match": "(?<=[\\w)\\]}\\\"'`])\\?"
+        },
+        {
+          "name": "keyword.operator.ternary.gpp",
+          "match": "\\?"
+        },
+        {
+          "name": "keyword.operator.channel.gpp",
+          "match": "<-"
+        },
+        {
+          "name": "keyword.operator.assignment.define.gpp",
+          "match": ":="
+        },
+        {
+          "name": "keyword.operator.variadic.gpp",
+          "match": "\\.\\.\\."
+        },
+        {
+          "name": "keyword.operator.assignment.compound.gpp",
+          "match": "(?:<<|>>|&\\^|[+\\-*/%&|^])="
+        },
+        {
+          "name": "keyword.operator.comparison.gpp",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.gpp",
+          "match": "&&|\\|\\||!"
+        },
+        {
+          "name": "keyword.operator.increment.gpp",
+          "match": "\\+\\+|--"
+        },
+        {
+          "name": "keyword.operator.assignment.gpp",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.approx.gpp",
+          "match": "~"
+        },
+        {
+          "name": "keyword.operator.arithmetic.gpp",
+          "match": "<<|>>|&\\^|[+\\-*/%&|^]"
+        },
+        {
+          "name": "punctuation.separator.colon.gpp",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.separator.comma.gpp",
+          "match": ","
+        },
+        {
+          "name": "punctuation.terminator.statement.gpp",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.accessor.gpp",
+          "match": "\\."
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.gpp",
+          "match": "\\b(?:bool|byte|complex64|complex128|error|float32|float64|int|int8|int16|int32|int64|rune|string|uint|uint8|uint16|uint32|uint64|uintptr|any|comparable)\\b(?!\\s*\\()"
+        },
+        {
+          "name": "support.type.primitive.gpp",
+          "match": "\\b(?:bool|byte|complex64|complex128|error|float32|float64|int|int8|int16|int32|int64|rune|string|uint|uint8|uint16|uint32|uint64|uintptr|any|comparable)\\b(?=\\s*\\()"
+        }
+      ]
+    },
+    "calls": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.gpp",
+          "match": "\\b(?:append|cap|clear|close|complex|copy|delete|imag|len|make|max|min|new|panic|print|println|real|recover)\\b(?=\\s*\\()"
+        },
+        {
+          "name": "entity.name.function.call.gpp",
+          "match": "[_\\p{L}][_\\p{L}\\p{N}]*(?=\\s*(?:\\[[^\\]]*\\])?\\()"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "match": "([_\\p{L}][_\\p{L}\\p{N}]*)(?=\\.)",
+          "name": "variable.other.gpp"
+        },
+        {
+          "match": "[_\\p{L}][_\\p{L}\\p{N}]*",
+          "name": "variable.other.gpp"
+        }
+      ]
+    }
+  }
+}
