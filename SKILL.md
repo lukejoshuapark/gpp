@@ -18,6 +18,8 @@ Use `gpp` wherever you would use `go`: `gpp build`, `gpp run`, `gpp test`,
 
 - `gpp check ./...`: type-check and report errors. Run it after edits.
 - `gpp fmt`: format `.gpp` files.
+- **`gpp generate`, never `go generate`.** `go generate` doesn't read
+  `//go:generate` directives in `.gpp` files.
 - **`gpp mod tidy`, never `go mod tidy`.** `go mod tidy` can't see imports in
   `.gpp` files and drops requirements.
 - Tests go in `_test.gpp` files.

@@ -157,30 +157,7 @@ func Load(cfg *Config, patterns ...string) (*Program, error) {
 		patterns = []string{"."}
 	}
 
-	l := &loader{cfg: cfg, stubs: map[string]string{}, fset: token.NewFileSet()}
-	if cfg.Cache != nil {
-		l.fset = cfg.Cache.fset
-	}
-	l.modRoot = l.findModRoot()
-	if l.modRoot != "" {
-		l.addGppDirs(l.modRoot)
-	}
-	// Patterns naming directories outside the module (or with no module).
-	for _, pat := range patterns {
-		if d := strings.TrimSuffix(pat, "/..."); isLocalPattern(d) {
-			abs := d
-			if !filepath.IsAbs(abs) {
-				abs = filepath.Join(dir, d)
-			}
-			if l.modRoot == "" || !within(abs, l.modRoot) {
-				if strings.HasSuffix(pat, "/...") {
-					l.addGppDirs(abs)
-				} else {
-					l.addGppDir(abs)
-				}
-			}
-		}
-	}
+	l := newLoader(cfg, patterns)
 
 	var list []*listPackage
 	for range 8 {
@@ -244,6 +221,37 @@ func Load(cfg *Config, patterns ...string) (*Program, error) {
 	return prog, nil
 }
 
+// newLoader returns a loader for patterns (cfg.Dir already absolute), with
+// stubs for the .gpp files of the main module and of local directories
+// the patterns name outside it.
+func newLoader(cfg *Config, patterns []string) *loader {
+	l := &loader{cfg: cfg, stubs: map[string]string{}, fset: token.NewFileSet()}
+	if cfg.Cache != nil {
+		l.fset = cfg.Cache.fset
+	}
+	l.modRoot = l.findModRoot()
+	if l.modRoot != "" {
+		l.addGppDirs(l.modRoot)
+	}
+	// Patterns naming directories outside the module (or with no module).
+	for _, pat := range patterns {
+		if d := strings.TrimSuffix(pat, "/..."); isLocalPattern(d) {
+			abs := d
+			if !filepath.IsAbs(abs) {
+				abs = filepath.Join(cfg.Dir, d)
+			}
+			if l.modRoot == "" || !within(abs, l.modRoot) {
+				if strings.HasSuffix(pat, "/...") {
+					l.addGppDirs(abs)
+				} else {
+					l.addGppDir(abs)
+				}
+			}
+		}
+	}
+	return l
+}
+
 type loader struct {
 	cfg     *Config
 	fset    *token.FileSet
@@ -255,6 +263,7 @@ type loader struct {
 	gomodcache *string           // GOMODCACHE, once needed
 	replaced   map[string]string // module@version -> copy, for G++ modules in the module cache
 	modFile    string            // module file with those replacements, if any
+	noDeps     bool              // list only the packages matching the patterns
 }
 
 func (l *loader) env() []string {
@@ -472,7 +481,10 @@ func (l *loader) goList(patterns []string) ([]*listPackage, error) {
 		return nil, err
 	}
 	defer cleanup()
-	args := []string{"list", "-e", "-json=ImportPath,Name,Dir,GoFiles,CgoFiles,TestGoFiles,XTestGoFiles,IgnoredGoFiles,Imports,ImportMap,Standard,DepOnly,ForTest,Module,Error", "-deps", "-overlay=" + ov}
+	args := []string{"list", "-e", "-json=ImportPath,Name,Dir,GoFiles,CgoFiles,TestGoFiles,XTestGoFiles,IgnoredGoFiles,Imports,ImportMap,Standard,DepOnly,ForTest,Module,Error", "-overlay=" + ov}
+	if !l.noDeps {
+		args = append(args, "-deps")
+	}
 	if l.cfg.Tests {
 		args = append(args, "-test")
 	}

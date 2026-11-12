@@ -2,6 +2,7 @@ package driver
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -109,5 +110,54 @@ func TestErrors(t *testing.T) {
 			}
 			golden(t, filepath.Join(dir, "errors"), b.String())
 		})
+	}
+}
+
+// TestListSources checks that .gpp files are listed in place of their
+// stubs, test files included, and that packages with only .gpp files and
+// packages that do not compile are found.
+func TestListSources(t *testing.T) {
+	mod := t.TempDir()
+	files := map[string]string{
+		"go.mod":     "module example.com/test\n\ngo 1.27\n",
+		"a.go":       "package main\n\nfunc main() {}\n",
+		"b.gpp":      "package main\n\nvar x = undefined\n",
+		"b_test.gpp": "package main\n",
+		"x_test.gpp": "package main_test\n",
+		"sub/s.gpp":  "package sub\n",
+		"tag/t.gpp":  "//go:build generate\n\npackage tag\n",
+		"tag/u.gpp":  "//go:build ignore\n\npackage tag\n",
+	}
+	for name, src := range files {
+		path := filepath.Join(mod, name)
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env := append(os.Environ(), "GOFLAGS=-tags=generate")
+	pkgs, err := ListSources(&Config{Dir: mod, Env: env}, "./...")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, p := range pkgs {
+		rel := func(fs []string) string {
+			var names []string
+			for _, f := range fs {
+				r, _ := filepath.Rel(mod, f)
+				names = append(names, r)
+			}
+			return strings.Join(names, " ")
+		}
+		got = append(got, fmt.Sprintf("%s main=%v files=[%s] x=[%s] err=%q", p.ImportPath, p.Main, rel(p.Files), rel(p.XFiles), p.Error))
+	}
+	want := []string{
+		`example.com/test main=true files=[a.go b.gpp b_test.gpp] x=[x_test.gpp] err=""`,
+		`example.com/test/sub main=true files=[sub/s.gpp] x=[] err=""`,
+		`example.com/test/tag main=true files=[tag/t.gpp] x=[] err=""`,
+	}
+	if g, w := strings.Join(got, "\n"), strings.Join(want, "\n"); g != w {
+		t.Errorf("got:\n%s\nwant:\n%s", g, w)
 	}
 }

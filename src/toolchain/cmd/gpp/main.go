@@ -34,6 +34,7 @@ Commands:
 	check    type-check packages and report errors
 	fmt      format G++ (and Go) source files
 	gen      write the Go translation of .gpp files next to them
+	generate run //go:generate directives in .go and .gpp files (go generate)
 	lsp      run the language server on stdin/stdout
 	version  print the G++ version
 
@@ -56,6 +57,8 @@ func main() {
 		err = fmtCmd(args)
 	case "gen":
 		err = gen(args)
+	case "generate":
+		err = generate(args)
 	case "mod":
 		if len(args) > 0 && args[0] == "tidy" {
 			err = driver.Tidy("", args[1:])
