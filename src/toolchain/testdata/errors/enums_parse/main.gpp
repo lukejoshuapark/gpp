@@ -2,7 +2,8 @@ package main
 
 type Shape enum {
 	Circle(float64)
-	Rect(float64, float64)
+	Rect()
+	Many(xs ...int)
 	Empty
 }
 

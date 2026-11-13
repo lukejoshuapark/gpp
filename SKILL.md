@@ -60,9 +60,9 @@ func (c Circle) Area() float64 => math.Pi * c.R * c.R
 func parse(s string) (int, error) => strconv.Atoi(s)? "parsing", nil
 ```
 
-**Enums:** a fixed set of variants, each carrying at most one value (use a
-struct for more). Use them instead of `iota` constants, sealed interfaces or
-tag-plus-fields structs.
+**Enums:** a fixed set of variants, each carrying any number of values,
+declared like a function's parameters (names optional). Use them instead of
+`iota` constants, sealed interfaces or tag-plus-fields structs.
 
 ```go
 type Color enum { Red; Green; Blue }
@@ -70,17 +70,18 @@ type Color enum { Red; Green; Blue }
 type Shape enum {
 	Empty
 	Circle(float64)
-	Rect(Size)
+	Rect(w, h float64)                // name values: hover and JSON use the names
 }
 
 s := Shape.Circle(2)                 // always qualified by the type
+r := Shape.Rect(3, 4)                // or Shape.Rect(f()) when f returns both
 o := Option.Some(3)                  // generic: inferred; Option[int].None otherwise
 
 switch s {                           // exhaustive unless there's a default
 case Shape.Circle(r):
 	return math.Pi * r * r
-case Shape.Rect(sz):
-	return sz.W * sz.H
+case Shape.Rect(w, h):               // bind every value, by position; _ skips one
+	return w * h
 case Shape.Empty:
 	return 0
 }
@@ -90,10 +91,12 @@ if s is Shape.Circle(r) && r > 5 { ... } // binds r for the && chain and the bod
 
 - Enums are plain values: comparable, usable as map keys, and the zero value
   is the first variant, so put a sensible default first.
-- They print as `Circle(2)`.
+- They print as `Circle(2)` and `Rect(3, 4)`.
+- `Shape.Rect` without parentheses matches any rect, whatever its values.
 - In JSON, an enum without values encodes as the variant name. One with
-  values encodes as `{"type":"Circle","value":2}`. Rename variants with
-  tags: `` Circle(float64) `json:"circle"` ``.
+  values encodes as `{"type":"Circle","value":2}`; several named values as
+  `"value":{"w":3,"h":4}`, several unnamed ones as `"value":[3,4]`. Rename
+  variants with tags: `` Circle(float64) `json:"circle"` ``.
 - Never write enum composite literals or touch their `GPP_` fields.
 
 ## Don'ts

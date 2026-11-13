@@ -362,12 +362,16 @@ type Shape enum {
 	Empty
 	// Circle has a radius.
 	Circle(float64)
+	Rect(w, h float64)
 }
 
 func main() {
 	s := Shape.Circle(2)
 	if s is Shape.Circle(r) && r > 1 {
 		println(r)
+	}
+	if t := Shape.Rect(1, 2); t is Shape.Rect(width, _) {
+		println(width)
 	}
 }
 `
@@ -387,11 +391,17 @@ func TestEnums(t *testing.T) {
 	if h := hover("Shape.Circle(2)", 7); !strings.Contains(h, "variant Shape.Circle(float64)") || !strings.Contains(h, "has a radius") {
 		t.Errorf("variant hover: %q", h)
 	}
-	if h := hover("Shape.Circle(2)", 1); !strings.Contains(h, "type Shape enum {\n\tEmpty\n\tCircle(float64)\n}") || strings.Contains(h, "GPP_") {
+	if h := hover("Shape.Circle(2)", 1); !strings.Contains(h, "type Shape enum {\n\tEmpty\n\tCircle(float64)\n\tRect(w float64, h float64)\n}") || strings.Contains(h, "GPP_") {
 		t.Errorf("enum hover: %q", h)
 	}
 	if h := hover("r > 1", 0); !strings.Contains(h, "var r float64") {
 		t.Errorf("binding hover: %q", h)
+	}
+	if h := hover("Shape.Rect(1, 2)", 7); !strings.Contains(h, "variant Shape.Rect(w float64, h float64)") {
+		t.Errorf("multi-value variant hover: %q", h)
+	}
+	if h := hover("println(width)", 8); !strings.Contains(h, "var width float64") {
+		t.Errorf("multi-value binding hover: %q", h)
 	}
 
 	src := strings.Replace(enumSrc, "s := Shape.Circle(2)", "s := Shape.Circle(2)\n\t_ = Shape.\n\t_ = s.", 1)
@@ -419,7 +429,7 @@ func TestEnums(t *testing.T) {
 	c.change(uri, 3, enumSrc)
 	var syms []DocumentSymbol
 	c.call("textDocument/documentSymbol", DocumentSymbolParams{TextDocument: TextDocumentIdentifier{URI: uri}}, &syms)
-	if len(syms) < 1 || syms[0].Kind != SymbolEnum || len(syms[0].Children) != 2 || syms[0].Children[1].Name != "Circle" {
+	if len(syms) < 1 || syms[0].Kind != SymbolEnum || len(syms[0].Children) != 3 || syms[0].Children[1].Name != "Circle" || syms[0].Children[2].Detail != "(w float64, h float64)" {
 		t.Errorf("symbols: %+v", syms)
 	}
 }

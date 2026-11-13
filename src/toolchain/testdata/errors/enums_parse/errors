@@ -1,2 +1,3 @@
-main.gpp:5:14: an enum variant carries at most one value: use a struct type for several
-main.gpp:9:16: an enum needs at least one variant
+main.gpp:5:6: a variant without values has no parentheses
+main.gpp:6:10: an enum variant cannot have a variadic value
+main.gpp:10:16: an enum needs at least one variant

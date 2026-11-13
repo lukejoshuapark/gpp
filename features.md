@@ -125,7 +125,8 @@ func greet(name string) => fmt.Println("hello,", name)
 
 ## Enums
 
-Enums list a fixed set of variants. Each variant can carry one value:
+Enums list a fixed set of variants. Each variant can carry values, listed
+like a function's parameters, with or without names:
 
 ```go
 type Color enum { Red; Green; Blue }
@@ -133,7 +134,8 @@ type Color enum { Red; Green; Blue }
 type Shape enum {
 	Empty
 	Circle(float64)
-	Rect(Size)            // several values: use a struct
+	Rect(w, h float64)
+	Line(Point, Point, string)
 }
 
 type Option[T any] enum {
@@ -142,9 +144,12 @@ type Option[T any] enum {
 }
 ```
 
-- **Construction:** `Color.Red`, `Shape.Circle(2)`, `Option.Some(3)`. A generic
-  enum's type argument is inferred from the value; for a variant without a
-  value, write it out: `Option[int].None`. The type name is always required.
+- **Construction:** `Color.Red`, `Shape.Circle(2)`, `Shape.Rect(3, 4)`,
+  `Option.Some(3)`. A variant with values is a function, so `Shape.Rect(f())`
+  works when `f` returns two `float64`s, and `Shape.Rect` can be passed as a
+  `func(float64, float64) Shape`. A generic enum's type arguments are
+  inferred from the values; for a variant without values, write them out:
+  `Option[int].None`. The type name is always required.
 - **`switch` on an enum value:** its cases are patterns that can bind the
   value. Without a `default` case the switch must cover every variant, and
   then it counts as a terminating statement:
@@ -154,31 +159,34 @@ type Option[T any] enum {
   	switch s {
   	case Shape.Circle(r):
   		return math.Pi * r * r
-  	case Shape.Rect(size):
-  		return size.W * size.H
-  	case Shape.Empty:
+  	case Shape.Rect(w, h):
+  		return w * h
+  	case Shape.Line(_, _, _), Shape.Empty:
   		return 0
   	}
   }
   ```
 
-  A case can list several patterns (`case Color.Red, Color.Blue:`), but then
-  it can't bind values. `_` ignores a value, and `Shape.Circle` without
-  parentheses matches any circle.
+  A pattern binds every value of its variant, by position, whatever names
+  the declaration gave them. `_` ignores a value, and `Shape.Rect` without
+  parentheses matches any rect. A case can list several patterns
+  (`case Color.Red, Color.Blue:`), but then it can't bind values.
 - **`is`:** tests for a variant. In the `&&` chain of an `if` or ternary
   condition it can bind the value, which is then in scope for the rest of
   the condition and the `if` body (or the ternary's first branch):
 
   ```go
   if s is Shape.Circle(r) && r > 5 { ... }
+  if s is Shape.Rect(w, h) && w == h { ... }
   label := s is Shape.Circle(r) ? fmt.Sprint(r) : "-"
   empty := s is Shape.Empty
   ```
 
 - **Values:** enums are plain values, with no allocation. The zero value is the
   first variant, so put a sensible default first. Enums support `==` (and can
-  be map keys) when their values do. They print as `Circle(2)` through a
-  generated `String` method, unless you declare your own.
+  be map keys) when their values do. They print as `Circle(2)` or
+  `Rect(3, 4)` through a generated `String` method, unless you declare your
+  own.
 - **Ordinary named types:** enums can have methods (other than ones named like
   variants) and satisfy interfaces. `type Hue Color` makes a new enum type with
   the same variants.
@@ -198,14 +206,20 @@ Enums encode to JSON (and text) by their variant names:
   map[Color]int{Color.Red: 1} // {"Red":1}
   ```
 
-- **An enum where any variant has a value** encodes every variant as an
-  object, with the variant's name under `"type"` and its value, if it has
-  one, under `"value"`:
+- **An enum where any variant has values** encodes every variant as an
+  object, with the variant's name under `"type"` and its values, if it has
+  any, under `"value"`:
 
   ```go
-  Shape.Circle(1.5)           // {"type":"Circle","value":1.5}
   Shape.Empty                 // {"type":"Empty"}
+  Shape.Circle(1.5)           // {"type":"Circle","value":1.5}
+  Shape.Rect(3, 4)            // {"type":"Rect","value":{"w":3,"h":4}}
+  Shape.Line(a, b, "dashed")  // {"type":"Line","value":[{...},{...},"dashed"]}
   ```
+
+  A single value is encoded as itself, named or not. Several named values
+  become an object keyed by their names; several unnamed values become an
+  array.
 
 - **Renaming a variant:** give it a tag, as on struct fields. The tag can
   only rename; `String` keeps the Go name.
@@ -217,8 +231,9 @@ Enums encode to JSON (and text) by their variant names:
   }
   ```
 
-- **Decoding:** unknown names, a missing `"type"` or a missing `"value"` are
-  errors that list what was expected. `null` leaves the value unchanged.
+- **Decoding:** unknown names, a missing `"type"` or `"value"`, a missing
+  named value, or an array of the wrong length are errors that say what was
+  expected. `null` leaves the value unchanged.
   `omitzero` omits the first variant (`omitempty` never applies to enums).
 - **Mechanism:** the encoding comes from generated `MarshalText` and
   `UnmarshalText` methods (enums without values) or `MarshalJSON` and

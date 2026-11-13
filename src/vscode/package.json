@@ -2,7 +2,7 @@
   "name": "gpp",
   "displayName": "G++",
   "description": "G++ language support: highlighting, errors as you type, completion with auto-import, organize imports, hover, go to definition, find references, rename, signature help, formatting, debugging and outline.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "gpp-lang",
   "icon": "images/icon.png",
   "private": true,

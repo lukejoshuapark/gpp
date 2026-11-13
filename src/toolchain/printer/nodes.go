@@ -2107,10 +2107,8 @@ func (p *printer) enumVariants(fields *ast.FieldList) {
 	lbrace, rbrace, list := fields.Opening, fields.Closing, fields.List
 	variant := func(f *ast.Field, sep whiteSpace) {
 		p.expr(f.Names[0])
-		if f.Type != nil {
-			p.print(token.LPAREN)
-			p.expr(f.Type)
-			p.print(token.RPAREN)
+		if ft, ok := f.Type.(*ast.FuncType); ok {
+			p.parameters(ft.Params, funcParam)
 		}
 		if f.Tag != nil {
 			p.print(sep)

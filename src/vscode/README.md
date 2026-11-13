@@ -58,5 +58,5 @@ and run **G++: Restart Language Server**.
 
 ```
 npm run package                      # builds gpp-<version>.vsix
-code --install-extension gpp-0.1.0.vsix
+code --install-extension gpp-0.2.0.vsix
 ```

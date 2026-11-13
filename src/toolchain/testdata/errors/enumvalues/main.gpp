@@ -1,0 +1,33 @@
+package main
+
+type Shape enum {
+	Empty
+	Rect(w, h float64)
+	Pair(int, string)
+	Dup(a int, a string)
+	Under(_ int)
+}
+
+func two() (int, string) { return 1, "x" }
+func one() int            { return 1 }
+
+func bad(s Shape) {
+	_ = Shape.Rect(1)
+	_ = Shape.Pair(two())
+	_ = Shape.Pair(one())
+	_ = Shape.Rect(1, 2, 3)
+	switch s {
+	case Shape.Rect(w):
+	case Shape.Pair(a, b, c):
+	case Shape.Dup(x, _), Shape.Under(_):
+	default:
+	}
+	if s is Shape.Rect(w, 2) {
+	}
+	if s is Shape.Rect(w, w) {
+	}
+	ok := s is Shape.Pair(n, _)
+	_ = ok
+}
+
+func main() {}

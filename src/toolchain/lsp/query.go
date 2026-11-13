@@ -397,10 +397,14 @@ func (s *server) documentSymbols(p DocumentSymbolParams) []DocumentSymbol {
 						}
 					case *ast.EnumType:
 						kind = SymbolEnum
+						var enumType types.Type
+						if obj := fi.pkg.Info.Defs[spec.Name]; obj != nil {
+							enumType = obj.Type()
+						}
 						for _, f := range t.Variants.List {
 							detail := ""
-							if f.Type != nil {
-								detail = typeStringOf(fi, f.Type)
+							if v, ok := fi.pkg.Info.Defs[f.Names[0]].(*types.Variant); ok && enumType != nil {
+								detail = variantValues(v, enumType, qualifier(fi.pkg.Types))
 							}
 							children = append(children, sym(f.Names[0].Name, detail, SymbolEnumMember, f, f.Names[0]))
 						}
@@ -566,6 +570,23 @@ func calleeObject(fi *fileInfo, fun ast.Expr) types.Object {
 	return nil
 }
 
+// variantValues returns the values of variant v in the enum type t, as
+// declared: "(float64)" or "(w float64, h float64)", or "" if it has none.
+func variantValues(v *types.Variant, t types.Type, q types.Qualifier) string {
+	if !v.HasValue() {
+		return ""
+	}
+	var parts []string
+	for i, vt := range v.ValueTypes(t) {
+		part := types.TypeString(vt, q)
+		if name := v.ValueName(i); name != "" {
+			part = name + " " + part
+		}
+		parts = append(parts, part)
+	}
+	return "(" + strings.Join(parts, ", ") + ")"
+}
+
 // enumBody writes an enum type's variants.
 func enumBody(en *types.Enum, t types.Type, q types.Qualifier) string {
 	var b strings.Builder
@@ -573,9 +594,7 @@ func enumBody(en *types.Enum, t types.Type, q types.Qualifier) string {
 	for i := range en.Len() {
 		v := en.Variant(i)
 		b.WriteString("\t" + v.Name())
-		if vt := v.ValueType(t); vt != nil {
-			b.WriteString("(" + types.TypeString(vt, q) + ")")
-		}
+		b.WriteString(variantValues(v, t, q))
 		b.WriteByte('\n')
 	}
 	b.WriteByte('}')

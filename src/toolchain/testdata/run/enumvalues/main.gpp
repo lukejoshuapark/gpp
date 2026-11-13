@@ -1,0 +1,118 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+// Variants with several values: names are optional, as in a parameter
+// list.
+type Shape enum {
+	Empty
+	Circle(r float64)
+	Rect(w, h float64) `json:"rect"`
+	Line(float64, float64, string)
+}
+
+type Either[L, R any] enum {
+	Neither
+	Both(left L, right R)
+}
+
+func dims() (float64, float64) { return 3, 4 }
+
+func parse(s string) (int, string, error) {
+	n, label, ok := strings.Cut(s, ":")
+	if !ok {
+		return 0, "", errors.New("no colon")
+	}
+	return strconv.Atoi(n)?, label, nil
+}
+
+func pairOf(s string) (Either[int, string], error) {
+	// ? spreads several values into the constructor
+	return Either.Both(parse(s)?), nil
+}
+
+func area(s Shape) float64 {
+	switch s {
+	case Shape.Circle(r):
+		return 3 * r * r
+	case Shape.Rect(w, h):
+		return w * h
+	case Shape.Line(_, _, _), Shape.Empty:
+		return 0
+	}
+}
+
+func main() {
+	shapes := []Shape{
+		Shape.Empty,
+		Shape.Circle(1),
+		Shape.Rect(2, 5),
+		Shape.Rect(dims()),
+		Shape.Line(1, 2, "dashed"),
+	}
+	for _, s := range shapes {
+		fmt.Println(s, area(s))
+	}
+
+	// constructors are functions
+	mk := Shape.Rect
+	fmt.Println(mk(6, 7))
+
+	// is binds several names, in an if or a ternary
+	w := "outer"
+	for _, s := range shapes {
+		if s is Shape.Rect(w, h) && w < h {
+			fmt.Println("tall rect", w, h)
+		}
+		label := s is Shape.Line(_, _, style) ? style : "-"
+		fmt.Print(label, " ")
+	}
+	fmt.Println(w)
+	fmt.Println(shapes[2] is Shape.Rect, shapes[2] is Shape.Line)
+
+	// comparable and usable as map keys
+	seen := map[Shape]int{}
+	for _, s := range shapes {
+		seen[s]++
+	}
+	fmt.Println(seen[Shape.Rect(3, 4)], Shape.Rect(2, 5) == shapes[2])
+
+	// generic enums infer their type arguments from the values
+	e := Either.Both(1, "one")
+	if e is Either.Both(l, r) {
+		fmt.Printf("%T %v %q\n", e, l, r)
+	}
+	p, err := pairOf("42:answer")
+	fmt.Println(p, err)
+	_, err = pairOf("nope")
+	fmt.Println(err)
+
+	// JSON: named values as an object, unnamed ones as an array
+	for _, s := range shapes {
+		b, err := json.Marshal(s)
+		fmt.Println(string(b), err)
+		var back Shape
+		if err := json.Unmarshal(b, &back); err != nil || back != s {
+			fmt.Println("round trip failed:", back, err)
+		}
+	}
+	b, _ := json.Marshal(e)
+	fmt.Println(string(b))
+	for _, in := range []string{
+		`{"type":"rect","value":{"w":1}}`,
+		`{"type":"rect","value":[1,2]}`,
+		`{"type":"Line","value":[1,2]}`,
+		`{"type":"Line","value":{"a":1}}`,
+		`{"type":"Circle","value":2.5}`,
+	} {
+		var s Shape
+		err := json.Unmarshal([]byte(in), &s)
+		fmt.Println(s, err)
+	}
+}

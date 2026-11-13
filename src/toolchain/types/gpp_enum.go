@@ -57,13 +57,13 @@ func (e *Enum) Lookup(name string) *Variant {
 }
 
 // A Variant is a variant of an enum type. Its type is the enum type for a
-// variant without a value, and the constructor's signature func(T) E for
-// one with a value.
+// variant without values, and the constructor's signature func(T1, T2) E
+// for one with values.
 type Variant struct {
 	object
 	index    int
-	payload  bool
-	jsonName string // from the variant's json tag, or ""
+	values   []string // the names of the variant's values ("" if unnamed)
+	jsonName string   // from the variant's json tag, or ""
 }
 
 // JSONName returns the variant's name in JSON (and text): its json tag's
@@ -78,7 +78,7 @@ func (v *Variant) JSONName() string {
 // HasValues reports whether any variant of the enum carries a value.
 func (e *Enum) HasValues() bool {
 	for _, v := range e.variants {
-		if v.payload {
+		if len(v.values) > 0 {
 			return true
 		}
 	}
@@ -96,27 +96,65 @@ func (v *Variant) enumType() Type {
 // Index returns the variant's tag value.
 func (v *Variant) Index() int { return v.index }
 
-// HasValue reports whether the variant carries a value.
-func (v *Variant) HasValue() bool { return v.payload }
+// HasValue reports whether the variant carries values.
+func (v *Variant) HasValue() bool { return len(v.values) > 0 }
+
+// NumValues returns the number of values the variant carries.
+func (v *Variant) NumValues() int { return len(v.values) }
+
+// ValueName returns the declared name of the variant's i'th value, or "".
+func (v *Variant) ValueName(i int) string { return v.values[i] }
+
+// NamedValues reports whether the variant's values have names.
+func (v *Variant) NamedValues() bool { return len(v.values) > 0 && v.values[0] != "" }
 
 // FieldName returns the name of the struct field holding the variant's
-// value.
-func (v *Variant) FieldName() string { return enumFieldPrefix + v.name }
+// i'th value: GPP_V for a variant with one value, and GPP_0_V, GPP_1_V,
+// ... for one with several (variant names cannot start with a digit).
+func (v *Variant) FieldName(i int) string { return EnumFieldName(v.name, i, len(v.values)) }
 
-// ValueType returns the type of the variant's value in the enum type t
-// (which may be an instance of a generic enum), or nil.
-func (v *Variant) ValueType(t Type) Type {
-	if !v.payload {
+// EnumFieldName returns the name of the struct field holding the i'th of
+// the n values of the variant named variant (see Variant.FieldName).
+func EnumFieldName(variant string, i, n int) string {
+	if n == 1 {
+		return enumFieldPrefix + variant
+	}
+	return enumFieldPrefix + strconv.Itoa(i) + "_" + variant
+}
+
+// ValueTypes returns the types of the variant's values in the enum type t
+// (which may be an instance of a generic enum).
+func (v *Variant) ValueTypes(t Type) []Type {
+	if len(v.values) == 0 {
 		return nil
 	}
-	if st, ok := t.Underlying().(*Struct); ok {
+	st, ok := t.Underlying().(*Struct)
+	if !ok {
+		return nil
+	}
+	types := make([]Type, len(v.values))
+	for i := range v.values {
+		name := v.FieldName(i)
 		for _, f := range st.fields {
-			if f.name == v.FieldName() {
-				return f.typ
+			if f.name == name {
+				types[i] = f.typ
 			}
 		}
+		if types[i] == nil {
+			types[i] = Typ[Invalid]
+		}
 	}
-	return nil
+	return types
+}
+
+// valueParams returns the parameters of the constructor of v in the enum
+// type t.
+func (v *Variant) valueParams(t Type, pos token.Pos, pkg *Package) *Tuple {
+	var params []*Var
+	for i, vt := range v.ValueTypes(t) {
+		params = append(params, NewParam(pos, pkg, v.values[i], vt))
+	}
+	return NewTuple(params...)
 }
 
 // EnumOf returns the enum description of t, or nil if t is not an enum.
@@ -174,12 +212,40 @@ func (check *Checker) enumType(e *ast.EnumType, def *TypeName) Type {
 			continue
 		}
 		seen[name.Name] = true
-		if f.Type != nil {
-			pt := check.varType(f.Type)
-			v.payload = true
-			fields = append(fields, NewField(f.Type.Pos(), check.pkg, v.FieldName(), pt, false))
+		if ft, ok := f.Type.(*ast.FuncType); ok {
+			var params []*Var
+			type value struct {
+				pos  token.Pos
+				name string
+				typ  Type
+			}
+			var vals []value
+			for _, pf := range ft.Params.List {
+				pt := check.varType(pf.Type)
+				if len(pf.Names) == 0 {
+					vals = append(vals, value{pf.Type.Pos(), "", pt})
+				}
+				for _, n := range pf.Names {
+					vals = append(vals, value{n.Pos(), n.Name, pt})
+				}
+			}
+			valueNames := map[string]bool{}
+			for _, val := range vals {
+				switch {
+				case val.name == "_":
+					check.errorf(atPos(val.pos), NotAnExpr, "a value of variant %s cannot be named _", name.Name)
+				case valueNames[val.name] && val.name != "":
+					check.errorf(atPos(val.pos), DuplicateDecl, "duplicate value %s in variant %s", val.name, name.Name)
+				}
+				valueNames[val.name] = true
+				v.values = append(v.values, val.name)
+			}
+			for i, val := range vals {
+				fields = append(fields, NewField(val.pos, check.pkg, v.FieldName(i), val.typ, false))
+				params = append(params, NewParam(val.pos, check.pkg, val.name, val.typ))
+			}
 			v.typ = NewSignatureType(nil, nil, nil,
-				NewTuple(NewParam(f.Type.Pos(), check.pkg, "", pt)),
+				NewTuple(params...),
 				NewTuple(newVar(ResultVar, name.Pos(), check.pkg, "", named)), false)
 		} else {
 			v.typ = named
@@ -295,7 +361,7 @@ func (check *Checker) enumSelector(x *operand, e *ast.SelectorExpr) bool {
 	}
 	check.recordUse(e.Sel, v)
 	generic := n.TypeParams().Len() > 0 && n.TypeArgs().Len() == 0
-	if !v.payload {
+	if !v.HasValue() {
 		if generic {
 			check.errorf(e, CannotInferTypeArgs, "cannot infer type arguments for %s.%s: write them out, as in %s[T].%s", n.obj.name, v.name, n.obj.name, v.name)
 			x.invalidate()
@@ -314,11 +380,10 @@ func (check *Checker) enumSelector(x *operand, e *ast.SelectorExpr) bool {
 			targs[i] = tp
 		}
 		inst := check.instance(e.Pos(), n, targs, nil, check.context()).(*Named)
-		pt := v.ValueType(inst)
 		// (renameTParams has bound the fresh type parameters already)
 		sig := &Signature{
 			tparams: &TypeParamList{tparams: tparams},
-			params:  NewTuple(NewParam(e.Sel.Pos(), check.pkg, "", pt)),
+			params:  v.valueParams(inst, e.Sel.Pos(), check.pkg),
 			results: NewTuple(newVar(ResultVar, e.Sel.Pos(), check.pkg, "", inst)),
 		}
 		x.mode_ = value
@@ -327,7 +392,7 @@ func (check *Checker) enumSelector(x *operand, e *ast.SelectorExpr) bool {
 		return true
 	}
 	sig := NewSignatureType(nil, nil, nil,
-		NewTuple(NewParam(e.Sel.Pos(), check.pkg, "", v.ValueType(n))),
+		v.valueParams(n, e.Sel.Pos(), check.pkg),
 		NewTuple(newVar(ResultVar, e.Sel.Pos(), check.pkg, "", n)), false)
 	x.mode_ = value
 	x.typ_ = sig
@@ -348,29 +413,33 @@ func isReservedEnumField(t Type, name string) bool {
 }
 
 // ----------------------------------------------------------------------------
-// Patterns: T.Variant and T.Variant(name)
+// Patterns: T.Variant and T.Variant(name, ...)
 
 // enumPattern checks a pattern for the enum type n. It returns the variant
-// and the identifier binding its value (nil if none).
-func (check *Checker) enumPattern(n Type, p ast.Expr) (*Variant, *ast.Ident) {
+// and the identifiers binding its values (nil if none; any may be _).
+func (check *Checker) enumPattern(n Type, p ast.Expr) (*Variant, []*ast.Ident) {
 	var sel *ast.SelectorExpr
-	var bind *ast.Ident
+	var call *ast.CallExpr
+	var binds []*ast.Ident
 	switch p := ast.Unparen(p).(type) {
 	case *ast.SelectorExpr:
 		sel = p
 	case *ast.CallExpr:
 		sel, _ = ast.Unparen(p.Fun).(*ast.SelectorExpr)
 		if sel != nil {
-			if len(p.Args) != 1 || p.Ellipsis.IsValid() {
-				check.error(p, NotAnExpr, "a variant pattern binds one name: T.Variant(name)")
+			call = p
+			if p.Ellipsis.IsValid() {
+				check.error(atPos(p.Ellipsis), NotAnExpr, "a variant pattern binds names: T.Variant(name, ...)")
 				return nil, nil
 			}
-			id, ok := p.Args[0].(*ast.Ident)
-			if !ok {
-				check.errorf(p.Args[0], NotAnExpr, "a variant pattern binds a name, not %s (compare values with ==)", ExprString(p.Args[0]))
-				return nil, nil
+			for _, arg := range p.Args {
+				id, ok := arg.(*ast.Ident)
+				if !ok {
+					check.errorf(arg, NotAnExpr, "a variant pattern binds a name, not %s (compare values with ==)", ExprString(arg))
+					return nil, nil
+				}
+				binds = append(binds, id)
 			}
-			bind = id
 		}
 	}
 	if sel == nil {
@@ -400,11 +469,32 @@ func (check *Checker) enumPattern(n Type, p ast.Expr) (*Variant, *ast.Ident) {
 		return nil, nil
 	}
 	check.recordUse(sel.Sel, v)
-	if bind != nil && !v.payload {
-		check.errorf(bind, WrongArgCount, "%s.%s has no value to bind", typeName(n), v.name)
+	if call != nil && len(binds) != len(v.values) {
+		switch {
+		case !v.HasValue():
+			var at positioner = call
+			if len(binds) > 0 {
+				at = binds[0]
+			}
+			check.errorf(at, WrongArgCount, "%s.%s has no value to bind", typeName(n), v.name)
+		case len(v.values) == 1:
+			check.errorf(call, WrongArgCount, "%s.%s has one value: bind it with %s.%s(name)", typeName(n), v.name, typeName(n), v.name)
+		default:
+			check.errorf(call, WrongArgCount, "%s.%s has %d values: bind each one (_ ignores one), or match any with %s.%s", typeName(n), v.name, len(v.values), typeName(n), v.name)
+		}
 		return v, nil
 	}
-	return v, bind
+	return v, binds
+}
+
+// bindsNames reports whether binds binds any name (other than _).
+func bindsNames(binds []*ast.Ident) bool {
+	for _, id := range binds {
+		if id.Name != "_" {
+			return true
+		}
+	}
+	return false
 }
 
 func typeName(t Type) string {
@@ -414,17 +504,21 @@ func typeName(t Type) string {
 	return TypeString(t, nil)
 }
 
-// bindVariant declares the variable bound by a pattern in the current
-// scope.
-func (check *Checker) bindVariant(enumType Type, v *Variant, id *ast.Ident, scopePos token.Pos) {
-	if id == nil || id.Name == "_" {
-		if id != nil {
-			check.recordDef(id, nil)
-		}
+// bindVariant declares the variables bound by a pattern in the current
+// scope (with binds nil, it binds none).
+func (check *Checker) bindVariant(enumType Type, v *Variant, binds []*ast.Ident, scopePos token.Pos) {
+	if binds == nil {
 		return
 	}
-	obj := newVar(LocalVar, id.Pos(), check.pkg, id.Name, v.ValueType(enumType))
-	check.declare(check.scope, id, obj, scopePos)
+	types := v.ValueTypes(enumType)
+	for i, id := range binds {
+		if id.Name == "_" {
+			check.recordDef(id, nil)
+			continue
+		}
+		obj := newVar(LocalVar, id.Pos(), check.pkg, id.Name, types[i])
+		check.declare(check.scope, id, obj, scopePos)
+	}
 }
 
 // enumSwitch checks a switch on a value x of enum type: its cases are
@@ -444,7 +538,7 @@ func (check *Checker) enumSwitch(s *ast.SwitchStmt, x *operand, inner stmtContex
 		}
 		check.openScope(clause, "case")
 		for _, p := range clause.List {
-			v, bind := check.enumPattern(x.typ(), p)
+			v, binds := check.enumPattern(x.typ(), p)
 			if v == nil {
 				continue
 			}
@@ -452,11 +546,16 @@ func (check *Checker) enumSwitch(s *ast.SwitchStmt, x *operand, inner stmtContex
 				check.errorf(p, DuplicateCase, "duplicate case %s in switch", ExprString(p))
 			}
 			covered[v.index] = true
-			if bind != nil && bind.Name != "_" && len(clause.List) > 1 {
-				check.errorf(bind, NotAnExpr, "cannot bind %s in a case with several patterns", bind.Name)
-				bind = nil
+			if len(clause.List) > 1 && bindsNames(binds) {
+				for _, id := range binds {
+					if id.Name != "_" {
+						check.errorf(id, NotAnExpr, "cannot bind %s in a case with several patterns", id.Name)
+						break
+					}
+				}
+				binds = nil
 			}
-			check.bindVariant(x.typ(), v, bind, clause.Colon)
+			check.bindVariant(x.typ(), v, binds, clause.Colon)
 		}
 		inner := inner
 		if i+1 == len(s.Body.List) {
@@ -500,16 +599,21 @@ func (check *Checker) isExpr(x *operand, e *ast.IsExpr) {
 		x.invalidate()
 		return
 	}
-	v, bind := check.enumPattern(y.typ(), e.Pattern)
+	v, binds := check.enumPattern(y.typ(), e.Pattern)
 	if v == nil {
 		x.invalidate()
 		return
 	}
-	if bind != nil && bind.Name != "_" && !check.bindable[e] {
-		check.errorf(bind, NotAnExpr, "%s can only be bound in the condition of an if or ternary, in a chain of &&", bind.Name)
-		bind = nil
+	if bindsNames(binds) && !check.bindable[e] {
+		for _, id := range binds {
+			if id.Name != "_" {
+				check.errorf(id, NotAnExpr, "%s can only be bound in the condition of an if or ternary, in a chain of &&", id.Name)
+				break
+			}
+		}
+		binds = nil
 	}
-	check.bindVariant(y.typ(), v, bind, e.End())
+	check.bindVariant(y.typ(), v, binds, e.End())
 	x.mode_ = value
 	x.typ_ = Typ[UntypedBool]
 	x.val = nil

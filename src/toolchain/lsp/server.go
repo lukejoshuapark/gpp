@@ -151,7 +151,7 @@ func (s *server) dispatch(m *message) (result any, rerr *rpcError) {
 					Full:   true,
 				},
 			},
-			ServerInfo: ServerInfo{Name: "gpp", Version: "0.1.0"},
+			ServerInfo: ServerInfo{Name: "gpp", Version: "0.2.0"},
 		}, nil
 	case "initialized":
 		return nil, nil

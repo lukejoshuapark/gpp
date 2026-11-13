@@ -1,0 +1,19 @@
+main.gpp:7:13: duplicate value a in variant Dup
+main.gpp:8:8: a value of variant Under cannot be named _
+main.gpp:15:18: not enough arguments in call to Shape.Rect
+	have (number)
+	want (float64, float64)
+main.gpp:17:22: not enough arguments in call to Shape.Pair
+	have (int)
+	want (int, string)
+main.gpp:18:23: too many arguments in call to Shape.Rect
+	have (number, number, number)
+	want (float64, float64)
+main.gpp:20:7: Shape.Rect has 2 values: bind each one (_ ignores one), or match any with Shape.Rect
+main.gpp:21:7: Shape.Pair has 2 values: bind each one (_ ignores one), or match any with Shape.Pair
+main.gpp:22:17: cannot bind x in a case with several patterns
+main.gpp:25:24: a variant pattern binds a name, not 2 (compare values with ==)
+main.gpp:27:21: 	other declaration of w
+main.gpp:27:21: declared and not used: w
+main.gpp:27:24: w redeclared in this block
+main.gpp:29:24: n can only be bound in the condition of an if or ternary, in a chain of &&

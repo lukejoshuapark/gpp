@@ -147,7 +147,8 @@ func (p *parser) parseTypeSpecType() ast.Expr {
 	return p.parseType()
 }
 
-// parseEnumType parses enum { Variant; Variant(Type); ... }.
+// parseEnumType parses enum { Variant; Variant(T); Variant(x, y T); ... }:
+// a variant's values are a parameter list, whose names are optional.
 func (p *parser) parseEnumType() *ast.EnumType {
 	if p.trace {
 		defer un(trace(p, "EnumType"))
@@ -161,15 +162,17 @@ func (p *parser) parseEnumType() *ast.EnumType {
 		name := p.parseIdent()
 		f := &ast.Field{Doc: doc, Names: []*ast.Ident{name}}
 		if p.tok == token.LPAREN {
-			p.next()
-			f.Type = p.parseType()
-			if p.tok == token.COMMA {
-				p.error(p.pos, "an enum variant carries at most one value: use a struct type for several")
-				for p.tok != token.RPAREN && p.tok != token.SEMICOLON && p.tok != token.RBRACE && p.tok != token.EOF {
-					p.next()
+			params := p.parseParameters(false)
+			if len(params.List) == 0 {
+				p.error(params.Opening, "a variant without values has no parentheses")
+			}
+			for _, pf := range params.List {
+				if dots, ok := pf.Type.(*ast.Ellipsis); ok {
+					p.error(pf.Type.Pos(), "an enum variant cannot have a variadic value")
+					pf.Type = dots.Elt
 				}
 			}
-			p.expect(token.RPAREN)
+			f.Type = &ast.FuncType{Func: token.NoPos, Params: params}
 		}
 		if p.tok == token.STRING {
 			// a tag, as on struct fields: `json:"name"`

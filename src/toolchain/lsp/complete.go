@@ -184,9 +184,7 @@ func methodExprItems(fi *fileInfo, t types.Type) []CompletionItem {
 		for i := range en.Len() {
 			v := en.Variant(i)
 			item := CompletionItem{Label: v.Name(), Kind: CompletionEnumMember, SortText: fmt.Sprintf("0%03d", i)}
-			if vt := v.ValueType(t); vt != nil {
-				item.Detail = "(" + types.TypeString(vt, q) + ")"
-			}
+			item.Detail = variantValues(v, t, q)
 			items = append(items, item)
 		}
 	}

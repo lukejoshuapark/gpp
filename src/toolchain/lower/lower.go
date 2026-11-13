@@ -510,8 +510,21 @@ func (l *lowerer) expr(x ast.Expr, pre *[]ast.Stmt) ast.Expr {
 
 	case *ast.CallExpr:
 		if v := l.variantOf(x.Fun); v != nil {
-			// T.V(value)
-			return l.construct(l.info.Types[x].Type, v, l.expr(x.Args[0], pre), x.Pos())
+			// T.V(value, ...)
+			vals := l.spread(l.exprList(x.Args, pre))
+			if len(vals) == 1 && v.NumValues() > 1 {
+				// T.V(f()) with f returning the values
+				var temps []ast.Expr
+				for range v.NumValues() {
+					temps = append(temps, l.temp(x.Pos(), "v"))
+				}
+				*pre = append(*pre, define(temps, vals))
+				vals = nil
+				for _, t := range temps {
+					vals = append(vals, ident(t.(*ast.Ident)))
+				}
+			}
+			return l.construct(l.info.Types[x].Type, v, vals, x.Pos())
 		}
 		xs := l.exprList(append([]ast.Expr{x.Fun}, x.Args...), pre)
 		x.Fun = xs[0]

@@ -497,9 +497,10 @@ type (
 
 	// Pointer types are represented via StarExpr nodes.
 
-	// An EnumType node represents a G++ enum type: enum { A; B(T) }.
-	// Each variant is a Field with one name and, if the variant carries a
-	// value, its Type.
+	// An EnumType node represents a G++ enum type:
+	// enum { A; B(T); C(x, y T) }. Each variant is a Field with one name
+	// and, if the variant carries values, a Type that is a *FuncType
+	// (with no "func") whose Params list the values.
 	EnumType struct {
 		Enum     token.Pos  // position of "enum"
 		Variants *FieldList // variants; Opening and Closing are the braces

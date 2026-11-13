@@ -567,7 +567,7 @@ func writeObject(buf *bytes.Buffer, obj Object, qf Qualifier) {
 		return
 
 	case *Variant:
-		// G++: Shape.Circle(float64)
+		// G++: Shape.Circle(float64), Shape.Rect(w float64, h float64)
 		buf.WriteString("variant ")
 		if n := asNamed(obj.enumType()); n != nil {
 			buf.WriteString(packagePrefix(obj.Pkg(), qf) + n.obj.name + ".")
@@ -575,7 +575,15 @@ func writeObject(buf *bytes.Buffer, obj Object, qf Qualifier) {
 		buf.WriteString(obj.Name())
 		if sig, ok := typ.(*Signature); ok {
 			buf.WriteByte('(')
-			WriteType(buf, sig.params.vars[0].typ, qf)
+			for i, p := range sig.params.vars {
+				if i > 0 {
+					buf.WriteString(", ")
+				}
+				if p.name != "" {
+					buf.WriteString(p.name + " ")
+				}
+				WriteType(buf, p.typ, qf)
+			}
 			buf.WriteByte(')')
 		}
 		return
